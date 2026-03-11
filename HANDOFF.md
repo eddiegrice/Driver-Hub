@@ -12,9 +12,9 @@
 - **Product owner:** Non-technical (“vibe coding”); rely on the agent for correct, secure, professional implementation.  
 - **Platform:** React Native with **Expo** (SDK 54). **Android and iOS** only; no web build required.  
 - **Workspace:** `c:\Users\eddie\Documents\DriverHubApp` — the **app code lives in `mobile/`** (Expo app). There is no separate backend repo yet.
-- **Version control:** Git + **GitHub** is the main workflow. See **`docs/git-github-workflow.md`** for setup and day-to-day commit/push/rollback. Never commit `mobile/.env` (Supabase keys).
+- **Version control:** Git + **GitHub** is the main workflow. See **`docs/git-daily-checklist.md`** for the simple daily steps. Never commit `mobile/.env` (Supabase keys).
 
-**Planned business model:** Membership fee = app subscription via **App Store / Google Play** only. No separate payment system. When we add backend, subscription status will drive membership (active/expired) and access.
+**Business model (updated):** Members subscribe to the club via the **website** using **GoCardless** direct debits (no in-app purchases). The backend (or admin team) marks members as **active/expired** in the database; the app simply checks that status to allow or block access.
 
 ---
 
@@ -22,7 +22,9 @@
 
 - **Framework:** Expo ~54, React 19, React Native 0.81  
 - **Routing:** expo-router (file-based). Tabs + nested stacks.  
-- **State / data:** All **on-device only** for now:
+- **Auth:** Supabase email **code** login (passwordless). Supabase JS client configured in `lib/supabase.ts`; auth context in `context/AuthContext.tsx`; sign-in UI in `components/auth/SignInScreen.tsx`.  
+- **Backend data:** Supabase Postgres (project already created) with a `members` table as per `docs/supabase-schema.sql`. Member profile + membership status are loaded/saved via `lib/member-supabase.ts`.  
+- **State / data on device:** AsyncStorage is still used for some local storage:
   - **AsyncStorage** keys: `@driverhub_member`, `@driverhub_casework`, `@driverhub_news`, `@driverhub_news_seeded`, `@driverhub_polls`, `@driverhub_poll_responses`, `@driverhub_polls_seeded`, `@driverhub_poll_results_<pollId>`
 - **Contexts (providers):** In `app/_layout.tsx` order: `ThemeProvider` → `SafeAreaProvider` → `MemberProvider` → `CaseworkProvider` → `NewsProvider` → `PollsProvider` → `Stack`. Do not reorder without checking dependencies.
 - **Path alias:** `@/` points to project root (e.g. `@/context/MemberContext`, `@/types/member`, `@/constants/theme`).
@@ -115,18 +117,18 @@ mobile/
 - **News:** List of posts (seed data); detail with tappable URLs in body.  
 - **Polls:** Open / Closed lists; take poll (single/multiple/text); thank-you after submit; results only when closed; one open + one closed poll seeded.  
 - **More:** Placeholder screen.  
+- **Auth + membership gate (new):** Supabase email **code** login (`SignInScreen` → `AuthContext`). After sign-in, `MemberContext` loads profile + membership status from Supabase. If `membership_status === 'active'`, the user sees the main app; otherwise they see the `NotActiveScreen` (“Get access to DriverHub”), which acts as a paywall and offers a **Refresh status** button. Membership status is currently edited manually via Supabase; later it will be driven by GoCardless + backend.
 - **Expo Go:** App runs in Expo Go; user uses Command Prompt (not PowerShell, due to script policy) and `npx expo start` from `mobile/`.
 
 ---
 
 ## 7. What is NOT done (future work)
 
-- **Backend / API / database:** All data is device-only. Plan is to add a backend (e.g. Node + Postgres), validate receipts for app-store subscriptions, and sync member + casework + news + polls.  
-- **Auth:** No login/signup yet. Member is effectively “whoever uses this device.”  
-- **Admin side:** No admin app or web panel yet. Admins will: handle casework (status, replies), post news, create polls, see live poll results.  
-- **Dashboard (Home):** Content is static/placeholder. Should later pull from news, casework, expiries.  
-- **Notifications:** No push or in-app notifications yet (expiry reminders, casework updates, etc.).  
-- **Subscriptions:** No IAP integration yet; membership number/status/expiry are manual. Plan is app-store subscription = membership.
+- **Backend / API / database:** A real backend around Supabase is only partly designed. Supabase `members` table exists and is used for auth + membership status, but there is no full API layer or GoCardless integration yet. Plan is: website + backend + GoCardless manage billing, then update `membership_status` and related fields in Supabase.  
+- **Admin side:** No admin app or web panel yet. Admins currently have to use the Supabase Table Editor to mark members as active/expired. Long term: build an admin UI (web or PWA) to manage members, casework, news, polls.  
+- **Dashboard (Home):** Content is static/placeholder. Should later pull from news, casework, expiries, and membership status.  
+- **Notifications:** No push or in-app notifications yet (expiry reminders, casework updates, membership issues, etc.).  
+- **GoCardless integration:** No GoCardless integration yet. The plan is: members join on the website, set up a GoCardless direct debit, backend updates Supabase membership fields, and the app just checks that status.
 
 ---
 
