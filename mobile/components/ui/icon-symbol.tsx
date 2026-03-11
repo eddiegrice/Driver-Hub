@@ -25,6 +25,7 @@ const MAPPING = {
   'newspaper.fill': 'article',
   'checklist': 'checklist',
   'square.grid.2x2': 'apps',
+  'message.fill': 'chat',
 } as IconMapping;
 
 /**

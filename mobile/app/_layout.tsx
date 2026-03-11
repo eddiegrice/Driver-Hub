@@ -1,12 +1,15 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { NotActiveScreen } from '@/components/auth/NotActiveScreen';
+import { RegisterPushToken } from '@/components/RegisterPushToken';
 import { SignInScreen } from '@/components/auth/SignInScreen';
 import { CaseworkProvider } from '@/context/CaseworkContext';
+import { ChatProvider } from '@/context/ChatContext';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { MemberProvider, useMember } from '@/context/MemberContext';
 import { NewsProvider } from '@/context/NewsContext';
@@ -23,11 +26,13 @@ function TabsAndStack() {
     <CaseworkProvider>
       <NewsProvider>
         <PollsProvider>
-          <Stack screenOptions={{ headerShown: false }}>
+          <ChatProvider>
+            <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-          </Stack>
-          <StatusBar style="auto" />
+            </Stack>
+            <StatusBar style="auto" />
+          </ChatProvider>
         </PollsProvider>
       </NewsProvider>
     </CaseworkProvider>
@@ -49,7 +54,12 @@ function ActiveGate() {
   if (!memberStatus.isActive) {
     return <NotActiveScreen />;
   }
-  return <TabsAndStack />;
+  return (
+    <>
+      <RegisterPushToken />
+      <TabsAndStack />
+    </>
+  );
 }
 
 function AppContent() {
@@ -85,11 +95,13 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <SafeAreaProvider>
-        <AuthProvider>
-          <RootContent />
-        </AuthProvider>
-      </SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <AuthProvider>
+            <RootContent />
+          </AuthProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
     </ThemeProvider>
   );
 }

@@ -18,7 +18,7 @@ type MemberContextValue = {
 
 const MemberContext = createContext<MemberContextValue | null>(null);
 
-const defaultMemberStatus: MemberStatus = { isActive: true, membershipStatus: 'active' };
+const defaultMemberStatus: MemberStatus = { isActive: true, membershipStatus: 'active', isChatModerator: false };
 
 export function MemberProvider({ children }: { children: React.ReactNode }) {
   const { session } = useAuth();
@@ -35,7 +35,7 @@ export function MemberProvider({ children }: { children: React.ReactNode }) {
         setMemberStatus(result.status);
       } else {
         setMemberState(emptyMemberProfile());
-        setMemberStatus({ isActive: false, membershipStatus: 'expired' });
+        setMemberStatus({ isActive: false, membershipStatus: 'expired', isChatModerator: false });
       }
     } else {
       const stored = await getStoredMember();

@@ -26,7 +26,13 @@ Follow these steps once to create your backend. You’ll need a Supabase account
 5. Paste into the SQL Editor and click **Run**.
 6. You should see “Success. No rows returned.” (That’s normal.)
 
-This creates the `members` table and security rules (RLS), and a trigger that creates a member row when someone signs up.
+This creates the `members` table and security rules (RLS), and a trigger that creates a member row when someone signs up. If you already ran an older version of the schema, see the comment in `supabase-schema.sql` about adding `is_chat_moderator` to `members`, and run the chat section (or the full file) to add the chat tables.
+
+**Chat and Realtime:** After the schema is applied, enable Realtime for the chat tables so new messages and reactions appear live:
+1. Go to **Database** → **Replication** in the Supabase dashboard.
+2. Find **public** and ensure **chat_messages** and **chat_reactions** (and optionally **chat_room_state**) are enabled for replication.
+
+**Making someone a chat moderator:** In **Table Editor** → **members**, edit the member’s row and set **is_chat_moderator** to `true`. Only they will see the mod menu (three dots) in Club Chat and be able to delete messages, pause chat, and suspend members.
 
 ---
 
