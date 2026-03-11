@@ -1,0 +1,20 @@
+# DriverHub — repo root .gitignore (GitHub as main)
+
+# Dependencies and build
+mobile/node_modules/
+mobile/.expo/
+mobile/.expo-shared/
+mobile/.turbo/
+mobile/dist/
+
+# Secrets — never commit
+mobile/.env
+*.env
+!.env.example
+
+# Logs
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
