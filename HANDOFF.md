@@ -1,4 +1,4 @@
-# DriverHub App — Handoff for Next Session
+# PHD Matrix App — Handoff for Next Session
 
 **Purpose of this file:** Give the next AI chat agent everything needed to continue work without guessing. Copy or paste the relevant sections into your first message, or tell the agent to read `HANDOFF.md` in the project root.
 
@@ -6,7 +6,7 @@
 
 ## 1. Project overview
 
-- **App name:** DriverHub  
+- **App name:** PHD Matrix  
 - **What it is:** A **mobile-only** (no web) app for a **private hire drivers’ club** that works like a trade association. Members use it as part of their club membership.  
 - **Target users:** Private hire drivers (similar to taxi drivers); mix of tech comfort, so **readable, clear, simple** UI is important.  
 - **Product owner:** Non-technical (“vibe coding”); rely on the agent for correct, secure, professional implementation.  
@@ -25,7 +25,7 @@
 - **Framework:** Expo ~54, React 19, React Native 0.81  
 - **Routing:** expo-router (file-based). Tabs + nested stacks.  
 - **Auth:** Supabase email **code** login (passwordless). Supabase JS client configured in `lib/supabase.ts`; auth context in `context/AuthContext.tsx`; sign-in UI in `components/auth/SignInScreen.tsx`.  
-- **Backend data:** Supabase Postgres (project already created) with a `members` table as per `docs/supabase-schema.sql`. Member profile + membership status are loaded/saved via `lib/member-supabase.ts`. Chat uses Supabase tables `chat_messages`, `chat_reactions`, `chat_room_state`, etc. (see `docs/supabase-schema.sql`) and Realtime; see `lib/chat-supabase.ts`.
+- **Backend data:** Supabase Postgres (project already created) with a `members` table as per `docs/supabase-schema.sql`. Member profile + membership status are loaded/saved via `lib/member-supabase.ts`. Chat uses Supabase tables `chat_messages`, `chat_reactions`, `chat_room_state`, etc. (see `docs/supabase-schema.sql`) and Realtime; see `lib/chat-supabase.ts`.  
 - **State / data on device:** AsyncStorage is still used for some local storage:
   - **AsyncStorage** keys: `@driverhub_member`, `@driverhub_casework`, `@driverhub_news`, `@driverhub_news_seeded`, `@driverhub_polls`, `@driverhub_poll_responses`, `@driverhub_polls_seeded`, `@driverhub_poll_results_<pollId>`
 - **Contexts (providers):** In `app/_layout.tsx` order: `ThemeProvider` → `SafeAreaProvider` → `MemberProvider` → `CaseworkProvider` → `NewsProvider` → `PollsProvider` → `ChatProvider` (if present) → `Stack`. Do not reorder without checking dependencies.
@@ -40,44 +40,49 @@
 ```
 mobile/
 ├── app/
-│   ├── _layout.tsx          # Root: ThemeProvider, SafeAreaProvider, Member/Casework/News/Polls providers, Stack
+│   ├── _layout.tsx          # Root: GradientPortalBackground (fixed), ThemeProvider, SafeAreaProvider, Stack
 │   ├── modal.tsx            # Placeholder modal (expo-router)
 │   └── (tabs)/
-│       ├── _layout.tsx      # Tab bar: Home, Profile, Casework, News, Polls, Chat, More
-│       ├── index.tsx        # Home (dashboard placeholder + quick links)
-│       ├── profile.tsx      # Profile: MembershipCard + editable form, Save
-│       ├── chat.tsx         # Club Chat: single global room, bubbles, quote, reactions, mod actions (branch only)
-│       ├── more.tsx         # More (placeholder for future features)
+│       ├── _layout.tsx      # No bottom tab bar. AppHeader (logo + PHD MATRIX + Home) then TabSlot. Hidden TabList for routes.
+│       ├── index.tsx        # Home = main menu: membership card + large icon grid (News, Profile, Casework, Polls, Chat, More) + Latest updates
+│       ├── profile.tsx      # Profile: TabScreenHeader "Profile" + MembershipCard + editable form, Save
+│       ├── chat.tsx         # Chat Group: TabScreenHeader + glass box (messages) + quote bar + composer; keyboard handled via marginBottom
+│       ├── more.tsx         # More: TabScreenHeader "More" + placeholder
 │       ├── casework/
 │       │   ├── _layout.tsx  # Stack for casework
-│       │   ├── index.tsx    # List of tickets + "New request" button
+│       │   ├── index.tsx    # TabScreenHeader "Casework" + list of tickets + "New request"
 │       │   ├── new.tsx      # New request form (type, subject, message, photo attach)
-│       │   └── [id].tsx     # Ticket detail: messages thread, reply input, attachments
+│       │   └── [id].tsx    # Ticket detail: messages thread, reply input, attachments
 │       ├── news/
 │       │   ├── _layout.tsx
-│       │   ├── index.tsx    # List of posts
+│       │   ├── index.tsx    # TabScreenHeader "News & Updates" + list of posts
 │       │   └── [id].tsx     # Post detail; body has tappable URLs (regex-detected)
 │       └── polls/
 │           ├── _layout.tsx
-│           ├── index.tsx    # Open polls + Closed polls sections
+│           ├── index.tsx    # TabScreenHeader "Polls" + Open / Closed polls
 │           └── [id].tsx     # Take poll (if open) / Thank you (if responded) / Results (if closed)
 ├── components/
+│   ├── GradientPortalBackground.tsx  # Fixed purple gradient background (used in root _layout)
+│   ├── AppHeader.tsx        # Global header on every tab: logo placeholder (left, pressable → home) + "PHD MATRIX" (pressable → home) + Home button (right, router.push('/'))
+│   ├── TabScreenHeader.tsx  # Unified tab title: two faint horizontal lines + one title line (subtitle size, semibold). Used on Chat, News, Casework, Polls, More, Profile.
+│   ├── FrostedGlassView.tsx # Glassmorphism: expo-blur (intensity 20) + rgba(255,255,255,0.07) overlay. Used inside GlassCard and chat glass box.
 │   ├── MembershipCard.tsx   # Premium card (teal, amber strip, name, membership no, status, expiry)
-│   ├── parallax-scroll-view.tsx  # ScrollView + optional header; fixed status bar strip; uses Spacing
-│   ├── themed-text.tsx      # Uses FontSize, LineHeight; link uses theme tint
+│   ├── parallax-scroll-view.tsx  # Legacy; tab screens now use ScrollView + TabScreenHeader + content (not ParallaxScrollView)
+│   ├── themed-text.tsx      # Uses FontSize, LineHeight; title/subtitle semibold (600); optional fontFamily from theme
 │   ├── themed-view.tsx
 │   └── ui/
-│       ├── Card.tsx         # accent (left bar), elevated (shadow)
+│       ├── Card.tsx         # accent (left bar), elevated (shadow) — legacy
+│       ├── GlassCard.tsx     # Neo-glass: FrostedGlassView + 1px border (NeoGlass.cardBorder). Optional gradientBorder for Active Membership (#00ccff → #1a0033).
 │       ├── PrimaryButton.tsx
-│       └── icon-symbol.tsx  # SF Symbol → MaterialIcons mapping for Android (tab icons)
+│       └── icon-symbol.tsx  # SF Symbol → MaterialIcons mapping for Android
 ├── constants/
-│   └── theme.ts             # Colors (light/dark), Brand, Spacing, Radius, FontSize, LineHeight
+│   └── theme.ts             # NeoBase, NeoGlass, NeoText, NeoAccent, Spacing, Radius, FontSize, FontWeight, Fonts, MembershipCardBorderGradient
 ├── context/
 │   ├── MemberContext.tsx    # useMember(): member, isLoading, setMember, saveMember
 │   ├── CaseworkContext.tsx  # useCasework(): tickets, getTicket, createTicket, addMessage, setTicketStatus
-│   ├── NewsContext.tsx     # useNews(): posts, getPost, refreshPosts
+│   ├── NewsContext.tsx      # useNews(): posts, getPost, refreshPosts
 │   ├── PollsContext.tsx     # usePolls(): polls, openPolls, closedPolls, getPoll, getMyResponse, submitResponse, getResults
-│   └── ChatContext.tsx     # useChat(): messages, sendMessage, addReaction, deleteMessage (mod), quotedMessage, setQuotedMessage (branch only)
+│   └── ChatContext.tsx      # useChat(): messages, sendMessage, addReaction, deleteMessage (mod), etc. (branch only)
 ├── hooks/
 │   ├── use-color-scheme.ts
 │   └── use-theme-color.ts   # useThemeColor(props, 'text'|'tint'|'background'|'surface'|'border'|'textMuted' etc.)
@@ -95,9 +100,22 @@ mobile/
     └── chat.ts      # ChatMessage, ChatReaction, etc. (branch only)
 ```
 
+**Removed components (no longer in codebase):** `DashboardMenuBar.tsx`, `DashboardMenuTabBar.tsx` (bottom nav was removed; home is the main menu). `GlassTabBar.tsx` and `haptic-tab.tsx` exist but are legacy/unused.
+
 ---
 
-## 4. Data models (summary)
+## 4. Navigation and layout (current)
+
+- **No bottom tab bar.** The home screen **is** the main menu.
+- **Global header (every tab):** `AppHeader` at the top of `(tabs)/_layout.tsx`: left = logo placeholder (white circle, cyan #00ccff border) + “PHD” (superheavy) + “MATRIX” (light, caps). Right = “Home” button (house icon + label). **Logo and title are pressable** and call `router.push('/')` when not already on home. **Home button** does the same.
+- **Tab content:** Below the header, `TabSlot` renders the active route. Routes are switched by navigating (e.g. from home menu tiles via `router.push('/news')`, and back via Home/logo).
+- **Tab screen headers:** Every tab except home uses `TabScreenHeader` with a single title (e.g. “Chat Group”, “News & Updates”, “Profile”, “Casework”, “Polls”, “More”). Design: two faint horizontal lines (NeoGlass.stroke) with the title between them; font subtitle size, semibold; extra padding above/below text.
+- **Home screen content:** No duplicate hero (hero is in AppHeader). Content: membership card (GlassCard with gradient border when active), then the **menu grid** (large icon tiles for News, Profile, Casework, Polls, Chat, More), then “Latest updates” card. No bottom bar padding.
+- **Other tab screens:** Each uses `View` → `TabScreenHeader` → `ScrollView` with content; consistent padding horizontal `Spacing.xl`, top `Spacing.md`, bottom `Spacing.xxl`. No ParallaxScrollView.
+
+---
+
+## 5. Data models (summary)
 
 - **MemberProfile** (`types/member.ts`): name, badgeNumber, badgeExpiry, vehicleRegistration, vehicleMake, vehicleModel, plateNumber, plateExpiry, membershipNumber, membershipStatus ('active'|'expired'|'pending'), membershipExpiry. Single object per device; used for card, casework snapshot, and future expiry reminders.  
 - **Casework:** Tickets have id, memberSnapshot (MemberProfile at create time), type, subject, status, createdAt, updatedAt, messages[], attachments[]. Messages have sender ('member'|'admin'), text, createdAt. Status flow: sent_pending → being_reviewed → being_actioned → resolved → closed. Only member side is implemented; admin will set status and reply.  
@@ -107,50 +125,60 @@ mobile/
 
 ---
 
-## 5. Design system (already applied)
+## 6. Design system (Neo-Gradients Glassmorphism, fixed dark)
 
-- **Palette:** Brand.primary `#0D5C63`, Brand.primaryDark `#08464B`, Brand.accent `#D4A012`. Light: background `#F8FAFC`, surface `#FFFFFF`, text `#0F172A`. Dark: background `#0F172A`, surface `#1E293B`, tint = accent (amber).  
-- **Spacing / Radius / FontSize:** Exported from `constants/theme.ts`. Use `Spacing.*`, `Radius.*`, `FontSize.*`, `LineHeight.*` for new UI.  
-- **Components:** Use `Card` (accent, elevated), `PrimaryButton` (fullWidth), `MembershipCard` for the profile card. ParallaxScrollView uses a fixed status-bar strip so content doesn’t scroll under the clock/battery.  
-- **Tab bar:** Themed background and border; active tint from theme. Icons: `components/ui/icon-symbol.tsx` maps SF Symbol names to MaterialIcons for Android (tab icons listed there).
-
----
-
-## 6. What is implemented and working
-
-- **Home:** Hero block (teal), section cards with links to News, Profile, Casework, Polls.  
-- **Profile:** MembershipCard (teal card, amber strip, name, membership no, status, expiry) + form for all MemberProfile fields + Save (persists to AsyncStorage).  
-- **Casework:** List of tickets; New request (type, subject, message, photo attach); ticket detail with message thread and reply; member snapshot stored with each ticket.  
-- **News:** List of posts (seed data); detail with tappable URLs in body.  
-- **Polls:** Open / Closed lists; take poll (single/multiple/text); thank-you after submit; results only when closed; one open + one closed poll seeded.  
-- **More:** Placeholder screen.  
-- **Chat (feature branch only):** Single global Club Chat tab. Messages load from Supabase; send message, quote (swipe right to reply), react (e.g. thumbs up), Realtime updates. Moderators can delete messages. Keyboard handling and bubble layout tuned for Android/Expo Go. Push device registration is set up for future chat notifications (skipped in Expo Go). **Not yet merged to main** — more work planned before merge.
-- **Auth + membership gate:** Supabase email **code** login (`SignInScreen` → `AuthContext`). After sign-in, `MemberContext` loads profile + membership status from Supabase. If `membership_status === 'active'`, the user sees the main app; otherwise they see the `NotActiveScreen` (“Get access to DriverHub”), which acts as a paywall and offers a **Refresh status** button. Membership status is currently edited manually via Supabase; later it will be driven by GoCardless + backend.
-- **Expo Go:** App runs in Expo Go; user uses Command Prompt (not PowerShell, due to script policy) and `npx expo start` from `mobile/`.
+- **Fixed dark theme:** The app always uses the dark design (no switching with system/phone settings). `useColorScheme()` always returns `'dark'`.
+- **Permanent background:** A **purple gradient portal** (blue–purple glow) is the fixed background for the **whole app**. It is rendered once in `app/_layout.tsx` via `GradientPortalBackground`. All screens use a **transparent** theme background so this gradient shows through. Use **containers** (e.g. `GlassCard`, `FrostedGlassView`) for content blocks, not full-screen opaque backgrounds.
+- **Glassmorphism:** Solid grey surfaces have been replaced with **rgba(255,255,255,0.07)** overlay on top of **expo-blur** (intensity 20) via `FrostedGlassView`. Cards use **1px border** `NeoGlass.cardBorder` (rgba(255,255,255,0.15)). Active Membership card can use **gradient border** `#00ccff` → `#1a0033` via `GlassCard` prop `gradientBorder`.
+- **Palette:** Base canvas `#101115`. Portal gradient: `#3D37F2` → `#8930F3`. Glass: `NeoGlass.frostedOverlay`, `cardBorder`, `surface`, `surfaceElevated`. Text: `NeoText.primary`, `secondary`, `muted`. Accents: `NeoAccent.purple`, `cyan`, etc. Theme also defines `MembershipCardBorderGradient`, `FontWeight.superheavy`, `light`, `thin`, `Fonts.sans` (platform).
+- **Containers:** Prefer `GlassCard` from `components/ui/GlassCard.tsx` (FrostedGlassView + border; optional `gradientBorder`). Legacy `Card` and `PrimaryButton` still exist.
+- **Typography:** Headings use **semi-bold (600)**. ThemedText `title` and `subtitle` types use 600. Home hero used to have “PHD” superheavy and “MATRIX” light caps; that branding is now in `AppHeader`. `TabScreenHeader` uses `FontSize.subtitle`, `FontWeight.semibold`.
+- **Spacing / Radius:** `Spacing.*`, `Radius.card` (32), `Radius.lg` (16), etc. in `constants/theme.ts`. Chat glass box uses `Radius.lg` for a smaller corner radius.
 
 ---
 
-## 7. What is NOT done (future work)
+## 7. Chat screen (branch) — layout and keyboard
 
-- **Chat merge:** Chat is implemented on a feature branch but **not merged to main**. Polish and final checks are planned before merging (e.g. UX polish, edge cases, any snagging).  
-- **Backend / API / database:** A real backend around Supabase is only partly designed. Supabase `members` table exists and is used for auth + membership status, but there is no full API layer or GoCardless integration yet. Plan is: website + backend + GoCardless manage billing, then update `membership_status` and related fields in Supabase.  
-- **Admin side:** No admin app or web panel yet. Admins currently have to use the Supabase Table Editor to mark members as active/expired. Long term: build an admin UI (web or PWA) to manage members, casework, news, polls.  
-- **Dashboard (Home):** Content is static/placeholder. Should later pull from news, casework, expiries, and membership status.  
-- **Notifications:** No push or in-app notifications yet (expiry reminders, casework updates, membership issues, etc.). Chat push foundation is in place (device token storage) but not yet sending.  
-- **GoCardless integration:** No GoCardless integration yet. The plan is: members join on the website, set up a GoCardless direct debit, backend updates Supabase membership fields, and the app just checks that status.
+- **Title:** “Chat Group” (single line in `TabScreenHeader`). Mod menu (⋮) remains on the right when user is a moderator.
+- **Scroll area:** The message list is inside a **glassmorphic container**: outer wrapper `glassBoxOuter` (margins: horizontal `Spacing.md`, top/bottom `Spacing.sm`), inner `glassBox` (1px border, `Radius.lg`, `FrostedGlassView`). The **FlatList** scrolls inside this box; it does **not** include the composer. Quote bar (when replying) and composer sit **below** the glass box.
+- **Composer:** Below the glass box. `paddingBottom: Math.max(insets.bottom, Spacing.lg) + Spacing.sm` so it sits above the device gesture area. **Keyboard:** The composer uses **marginBottom: keyboardHeight** when the keyboard is open (from `Keyboard.addListener` for `keyboardWillShow` / `keyboardDidShow`). This is the **only** shift applied (no `KeyboardAvoidingView`), so the input moves up by exactly the keyboard height and stays visible with no large gap. Send button has reduced padding (e.g. `Spacing.md` horizontal, `Spacing.sm` vertical, minHeight 36).
 
 ---
 
-## 8. Known issues / snags (user noted)
+## 8. What is implemented and working
 
-- **Styling snags:** User said there were “a couple of styling problems” on casework (or elsewhere) and wanted to come back to them in a later “snagging” pass. No specific list was recorded; the next agent can do a quick pass and fix obvious layout/contrast/touch-target issues.  
+- **Home:** Main menu: membership card (GlassCard, gradient border when active) + large icon grid (News, Profile, Casework, Polls, Chat, More) + Latest updates card. No bottom bar; navigation via tiles and Home/logo in header.
+- **Profile:** TabScreenHeader “Profile” + MembershipCard + form + Save (persists to AsyncStorage / Supabase as configured).
+- **Casework:** TabScreenHeader “Casework” + list of tickets; New request; ticket detail with message thread and reply.
+- **News:** TabScreenHeader “News & Updates” + list of posts; detail with tappable URLs.
+- **Polls:** TabScreenHeader “Polls” + Open / Closed lists; take poll; thank-you; results when closed.
+- **More:** TabScreenHeader “More” + placeholder.
+- **Chat (feature branch):** TabScreenHeader “Chat Group” + glass box (messages) + quote bar + composer. Keyboard handled via `marginBottom: keyboardHeight`. Messages, quote, reactions, Realtime, mod actions. **Not yet merged to main.**
+- **Auth + membership gate:** Supabase email code login. `NotActiveScreen` if not active. Refresh status button.
+- **Expo Go:** Run with `npx expo start` from `mobile/`. Use Command Prompt on Windows if PowerShell has script policy issues.
+
+---
+
+## 9. What is NOT done (future work)
+
+- **Chat merge:** Chat is on a feature branch; polish and merge to main when ready.  
+- **Backend / API / database:** Supabase used for auth + members + chat; no full API layer or GoCardless integration yet.  
+- **Admin side:** No admin app; use Supabase Table Editor for now.  
+- **Dashboard (Home):** Content is still largely static/placeholder; could wire to news, casework, expiries.  
+- **Notifications:** Push foundation for chat exists but not yet sending.  
+- **GoCardless:** Plan is website + backend + GoCardless; app only checks membership status.
+
+---
+
+## 10. Known issues / snags (user noted)
+
 - **react-native-screens:** Must stay at 4.16.0 for Expo Go + SDK 54 (see §2).  
-- **Windows:** User runs npm in **Command Prompt**; PowerShell has execution policy issues with npm.  
-- **Node/npx:** User has Node and npx installed; project was created with `npx create-expo-app@latest mobile` in `DriverHubApp`.
+- **Windows:** User may run npm in **Command Prompt**; PowerShell can have execution policy issues.  
+- **Node/npx:** Project created with `npx create-expo-app@latest mobile` in `DriverHubApp`.
 
 ---
 
-## 9. How to run the app
+## 11. How to run the app
 
 ```cmd
 cd c:\Users\eddie\Documents\DriverHubApp\mobile
@@ -158,32 +186,33 @@ npm install
 npx expo start
 ```
 
-Then scan the QR code with **Expo Go** on the phone. Use **Command Prompt** (not PowerShell) for these commands if the user is on Windows.
+Scan the QR code with **Expo Go**. Use **Command Prompt** on Windows if needed.
 
-**If work is on a feature branch:** Commit and push that branch so it’s saved on GitHub. When resuming, `git checkout <branch-name>` then `git pull` so you’re on the latest for that branch.
-
----
-
-## 10. Suggested next tasks (pick as needed)
-
-1. **Chat:** Finish polish and any remaining work on the chat feature branch, then merge to main when ready.  
-2. **Snagging:** Fix remaining styling/layout issues the user mentioned; polish touch targets and readability.  
-3. **Backend design:** Define API (auth, member, casework, news, polls) and DB schema so the app can be wired to a real server later.  
-4. **Admin:** Start an admin UI (web or separate app) for casework, news, and polls.  
-5. **Dashboard:** Wire Home to real data (e.g. latest news, open casework count, upcoming expiries).  
-6. **Notifications:** Add push or in-app notifications for casework and expiry reminders.  
-7. **Subscriptions:** Integrate app-store IAP and map subscription status to membership.
+**If work is on a feature branch:** Commit and push; when resuming, `git checkout <branch-name>` and `git pull`.
 
 ---
 
-## 11. Quick reference for the next agent
+## 12. Suggested next tasks (pick as needed)
 
-- **Member data:** `useMember()` from `@/context/MemberContext`; persist with `saveMember(profile)`.  
-- **Casework:** `useCasework()`; `createTicket({ memberSnapshot, type, subject, status, messages, attachments })`; `addMessage(ticketId, 'member', text)`.  
-- **News:** `useNews()`; `getPost(id)`; posts from storage, seed in `lib/news-storage.ts`.  
-- **Polls:** `usePolls()`; `openPolls`, `closedPolls`; `submitResponse(pollId, answers)`; `getResults(pollId)` only after close.  
-- **Chat (branch):** `useChat()` from `@/context/ChatContext`; `messages`, `sendMessage(body, quotedMessage?)`, `addReaction(messageId, emoji)`, `deleteMessage(id)` (mods), `quotedMessage` / `setQuotedMessage`; data via `lib/chat-supabase.ts` and Realtime.  
-- **Theme:** `useThemeColor({ light?, dark? }, 'text'|'tint'|'background'|'surface'|'border'|'textMuted')`; `Spacing`, `Radius`, `FontSize`, `Brand` from `@/constants/theme`.  
-- **Routing:** `router.push('/casework/new')`, `router.push(\`/casework/${id}\`)`, `router.push('/news')`, `router.push('/polls')`, `router.push('/profile')`, `router.push('/chat')` from `expo-router`.
+1. **Chat:** Finish polish on the chat feature branch, then merge to main.  
+2. **Snagging:** Fix any remaining styling/layout issues; polish touch targets and readability.  
+3. **Backend design:** Define API and schema for member, casework, news, polls.  
+4. **Admin:** Start admin UI for casework, news, polls.  
+5. **Dashboard:** Wire Home to real data (latest news, casework count, expiries).  
+6. **Notifications:** Push or in-app notifications for casework and expiry reminders.  
+7. **Subscriptions:** GoCardless + backend driving membership status in Supabase.
+
+---
+
+## 13. Quick reference for the next agent
+
+- **Member data:** `useMember()` from `@/context/MemberContext`; `saveMember(profile)`.  
+- **Casework:** `useCasework()`; `createTicket(...)`; `addMessage(ticketId, 'member', text)`.  
+- **News:** `useNews()`; `getPost(id)`; posts from storage.  
+- **Polls:** `usePolls()`; `openPolls`, `closedPolls`; `submitResponse(pollId, answers)`; `getResults(pollId)` after close.  
+- **Chat (branch):** `useChat()`; `messages`, `sendMessage(body, quotedMessage?)`, `addReaction(messageId, emoji)`, `deleteMessage(id)` (mods).  
+- **Theme:** `useThemeColor({ light?, dark? }, 'text'|'tint'|'background'|'surface'|'border'|'textMuted')`; `Spacing`, `Radius`, `FontSize`, `NeoGlass`, `NeoText` from `@/constants/theme`.  
+- **Routing:** `router.push('/')` for home; `router.push('/news')`, `router.push('/profile')`, `router.push('/casework')`, `router.push('/polls')`, `router.push('/chat')`, `router.push('/more')`; `router.push(\`/casework/${id}\`)`, etc.  
+- **Header / layout:** `AppHeader` and `TabScreenHeader` in `components/`. No bottom bar; home is the main menu.
 
 Use this handoff so the next session can continue without re-discovering the codebase or breaking existing behavior.

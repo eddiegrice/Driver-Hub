@@ -27,17 +27,17 @@ export async function ensureSeeded(): Promise<NewsPost[]> {
   const seed: NewsPost[] = [
     {
       id: 'seed-1',
-      title: 'Welcome to DriverHub',
+      title: 'Welcome to PHD Matrix',
       body: 'This is your club app for news, casework and member services. Check back here for trade and licensing updates. You can also open a casework request from the Casework tab if you need support.\n\nUseful link: https://www.gov.uk/private-hire-licensing',
       publishedAt: new Date().toISOString(),
-      authorName: 'DriverHub',
+      authorName: 'PHD Matrix',
     },
     {
       id: 'seed-2',
       title: 'Licensing round-up',
       body: 'Local authorities are reviewing fee structures this quarter. If you have questions about your licence or vehicle plate, get in touch via Casework. We have also published a short guide on our website: https://example.com/guide',
       publishedAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-      authorName: 'DriverHub',
+      authorName: 'PHD Matrix',
     },
   ];
   await setStoredPosts(seed);

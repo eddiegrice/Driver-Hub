@@ -1,26 +1,37 @@
-import { StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { Spacing } from '@/constants/theme';
+import { TabScreenHeader } from '@/components/TabScreenHeader';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Spacing } from '@/constants/theme';
 
 export default function MoreScreen() {
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#F8FAFC', dark: '#0F172A' }}
-      headerImage={null}>
-      <ThemedView style={styles.container}>
-        <ThemedText type="title">More</ThemedText>
-        <ThemedText style={styles.placeholder}>
-          Placeholder for future features. New functionality will appear here in later versions.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <View style={styles.screen}>
+      <TabScreenHeader title="More" />
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ThemedView style={styles.container}>
+          <ThemedText style={styles.placeholder}>
+            Placeholder for future features. New functionality will appear here in later versions.
+          </ThemedText>
+        </ThemedView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xxl,
+  },
   container: {
     gap: Spacing.xl,
   },

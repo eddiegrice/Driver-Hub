@@ -18,7 +18,9 @@ const MAPPING = {
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
-  // DriverHub tab icons
+  'chevron.up': 'expand-less',
+  'line.3.horizontal': 'menu',
+  // PHD Matrix tab icons
   'person.crop.rectangle': 'badge',
   'person.crop.circle': 'person',
   'doc.text.magnifyingglass': 'description',

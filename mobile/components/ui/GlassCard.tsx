@@ -1,0 +1,86 @@
+/**
+ * Neo-Glass card: frosted glass (blur + overlay), 1px border, large radius.
+ * Optional gradient border for e.g. Active Membership card.
+ */
+import type { PropsWithChildren } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+
+import { FrostedGlassView } from '@/components/FrostedGlassView';
+import { MembershipCardBorderGradient, NeoGlass, Radius } from '@/constants/theme';
+
+type GlassCardProps = PropsWithChildren<{
+  elevated?: boolean;
+  /** Gradient border (e.g. Active Membership card): #00ccff → #1a0033 */
+  gradientBorder?: boolean;
+  style?: object;
+}>;
+
+export function GlassCard({ children, elevated, gradientBorder, style }: GlassCardProps) {
+  const cardBorderRadius = Radius.card;
+  const borderWidth = 1;
+  const borderColor = NeoGlass.cardBorder;
+
+  if (gradientBorder) {
+    return (
+      <View style={[styles.gradientBorderWrap, style]}>
+        <LinearGradient
+          colors={MembershipCardBorderGradient as unknown as string[]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.gradientBorder, { borderRadius: cardBorderRadius + borderWidth }]}
+        />
+        <View style={[styles.gradientInner, { borderRadius: cardBorderRadius }]}>
+          <FrostedGlassView borderRadius={cardBorderRadius} style={styles.frosted}>
+            <View style={styles.content}>{children}</View>
+          </FrostedGlassView>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View
+      style={[
+        styles.card,
+        {
+          borderRadius: cardBorderRadius,
+          borderWidth,
+          borderColor,
+        },
+        style,
+      ]}>
+      <FrostedGlassView borderRadius={cardBorderRadius - borderWidth} style={styles.frosted}>
+        <View style={styles.content}>{children}</View>
+      </FrostedGlassView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: {
+    overflow: 'hidden',
+    position: 'relative',
+    minHeight: 1,
+  },
+  gradientBorderWrap: {
+    position: 'relative',
+    padding: 1,
+    minHeight: 1,
+  },
+  gradientBorder: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  gradientInner: {
+    flex: 1,
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+  },
+  frosted: {
+    flex: 1,
+    minHeight: 1,
+  },
+  content: {
+    padding: 24,
+  },
+});

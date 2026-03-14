@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
-import { StyleSheet, TouchableOpacity } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
-import ParallaxScrollView from '@/components/parallax-scroll-view';
+import { TabScreenHeader } from '@/components/TabScreenHeader';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Card } from '@/components/ui/Card';
@@ -15,51 +15,66 @@ export default function NewsListScreen() {
 
   if (isLoading) {
     return (
-      <ParallaxScrollView headerBackgroundColor={{ light: '#F8FAFC', dark: '#0F172A' }} headerImage={null}>
+      <View style={styles.screen}>
+        <TabScreenHeader title="News & Updates" />
         <ThemedView style={styles.centered}>
           <ThemedText>Loading…</ThemedText>
         </ThemedView>
-      </ParallaxScrollView>
+      </View>
     );
   }
 
   return (
-    <ParallaxScrollView headerBackgroundColor={{ light: '#F8FAFC', dark: '#0F172A' }} headerImage={null}>
-      <ThemedView style={styles.container}>
-        <ThemedText type="title">News &amp; Updates</ThemedText>
-        <ThemedText style={styles.helperText}>
-          Trade and licensing news from the club. Tap a post to read more.
-        </ThemedText>
+    <View style={styles.screen}>
+      <TabScreenHeader title="News & Updates" />
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ThemedView style={styles.container}>
+          <ThemedText style={styles.helperText}>
+            Trade and licensing news from the club. Tap a post to read more.
+          </ThemedText>
 
-        {posts.length === 0 ? (
-          <ThemedText style={styles.empty}>No posts yet.</ThemedText>
-        ) : (
-          <ThemedView style={styles.list}>
-            {posts.map((post) => (
-              <TouchableOpacity
-                key={post.id}
-                onPress={() => router.push(`/news/${post.id}`)}
-                activeOpacity={0.8}>
-                <Card accent elevated style={styles.card}>
-                  <ThemedText type="defaultSemiBold">{post.title}</ThemedText>
-                  <ThemedText style={styles.meta} numberOfLines={1}>
-                    {post.authorName} · {formatDateForDisplay(post.publishedAt.slice(0, 10))}
-                  </ThemedText>
-                  <ThemedText style={styles.excerpt} numberOfLines={2}>
-                    {post.body}
-                  </ThemedText>
-                </Card>
-              </TouchableOpacity>
-            ))}
-          </ThemedView>
-        )}
-      </ThemedView>
-    </ParallaxScrollView>
+          {posts.length === 0 ? (
+            <ThemedText style={styles.empty}>No posts yet.</ThemedText>
+          ) : (
+            <ThemedView style={styles.list}>
+              {posts.map((post) => (
+                <TouchableOpacity
+                  key={post.id}
+                  onPress={() => router.push(`/news/${post.id}`)}
+                  activeOpacity={0.8}>
+                  <Card accent elevated style={styles.card}>
+                    <ThemedText type="defaultSemiBold">{post.title}</ThemedText>
+                    <ThemedText style={styles.meta} numberOfLines={1}>
+                      {post.authorName} · {formatDateForDisplay(post.publishedAt.slice(0, 10))}
+                    </ThemedText>
+                    <ThemedText style={styles.excerpt} numberOfLines={2}>
+                      {post.body}
+                    </ThemedText>
+                  </Card>
+                </TouchableOpacity>
+              ))}
+            </ThemedView>
+          )}
+        </ThemedView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xxl,
+  },
   centered: {
+    flex: 1,
     paddingVertical: Spacing.xxl,
     alignItems: 'center',
   },

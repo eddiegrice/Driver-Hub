@@ -1,4 +1,4 @@
--- DriverHub Supabase schema: members + membership (Phase 1)
+-- PHD Matrix Supabase schema: members + membership (Phase 1)
 -- Run this in the Supabase SQL Editor after creating your project (UK/EU region).
 -- See docs/supabase-setup.md for step-by-step instructions.
 

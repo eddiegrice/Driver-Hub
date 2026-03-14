@@ -1,102 +1,214 @@
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollView } from 'react-native';
 
-import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Card } from '@/components/ui/Card';
-import { useThemeColor } from '@/hooks/use-theme-color';
-import { Brand, Spacing } from '@/constants/theme';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useMember } from '@/context/MemberContext';
+import {
+  FontSize,
+  FontWeight,
+  NeoAccent,
+  NeoText,
+  Radius,
+  Spacing,
+} from '@/constants/theme';
+
+const MENU_ITEMS: {
+  route: string;
+  label: string;
+  icon: 'newspaper.fill' | 'person.crop.circle' | 'doc.text.magnifyingglass' | 'checklist' | 'message.fill' | 'square.grid.2x2';
+}[] = [
+  { route: '/news', label: 'News', icon: 'newspaper.fill' },
+  { route: '/profile', label: 'Profile', icon: 'person.crop.circle' },
+  { route: '/casework', label: 'Casework', icon: 'doc.text.magnifyingglass' },
+  { route: '/polls', label: 'Polls', icon: 'checklist' },
+  { route: '/chat', label: 'Chat', icon: 'message.fill' },
+  { route: '/more', label: 'More', icon: 'square.grid.2x2' },
+];
 
 export default function HomeScreen() {
   const router = useRouter();
-  const heroBg = useThemeColor(
-    { light: Brand.primary, dark: Brand.primaryDark },
-    'background'
-  );
+  const insets = useSafeAreaInsets();
+  const { member } = useMember();
+
+  const membershipStatus = member?.membershipStatus ?? '—';
+  const membershipNumber = member?.membershipNumber ?? '—';
+  const isActive = membershipStatus === 'active';
 
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: Brand.primary, dark: Brand.primaryDark }}
-      headerImage={null}>
-      <ThemedView style={styles.container}>
-        <View style={[styles.hero, { backgroundColor: heroBg }]}>
-          <ThemedText style={styles.heroTitle}>Welcome to DriverHub</ThemedText>
-          <ThemedText style={styles.heroSubtitle}>
-            Your club app for updates, support and member services.
-          </ThemedText>
+    <View style={styles.screen}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: Spacing.md,
+            paddingBottom: (insets.bottom || 16) + 24,
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <GlassCard elevated gradientBorder={isActive} style={styles.card}>
+          <View style={styles.statusRow}>
+            <View>
+              <ThemedText style={styles.label}>Membership status</ThemedText>
+              <ThemedText style={styles.value}>{membershipStatus}</ThemedText>
+            </View>
+            <View style={[styles.badge, isActive && styles.badgeActive]}>
+              <LinearGradient
+                colors={isActive ? (NeoAccent.cyan as unknown as string[]) : ['#444', '#333']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <ThemedText style={styles.badgeText}>{isActive ? 'Active' : membershipStatus}</ThemedText>
+            </View>
+          </View>
+          <ThemedText style={styles.muted}>Member no. {membershipNumber}</ThemedText>
+        </GlassCard>
+
+        <View style={styles.menuGrid}>
+          {MENU_ITEMS.map(({ route, label, icon }) => (
+            <TouchableOpacity
+              key={route}
+              activeOpacity={0.8}
+              onPress={() => router.push(route)}
+              style={styles.quickTileWrap}
+            >
+              <GlassCard style={styles.quickTile}>
+                <View style={styles.quickIconWrap}>
+                  <IconSymbol name={icon} size={26} color={NeoText.secondary} />
+                </View>
+                <ThemedText style={styles.quickLabel} numberOfLines={1}>{label}</ThemedText>
+              </GlassCard>
+            </TouchableOpacity>
+          ))}
         </View>
 
-        <Card accent elevated style={styles.sectionCard}>
-          <ThemedText type="subtitle" style={styles.sectionLabel}>Latest updates</ThemedText>
-          <ThemedText style={styles.sectionBody}>
-            Important news and announcements appear here. Tap News to see the full feed.
+        <ThemedText style={styles.sectionTitle}>Latest updates</ThemedText>
+        <GlassCard elevated style={styles.card}>
+          <ThemedText style={styles.cardTitle}>News & announcements</ThemedText>
+          <ThemedText style={styles.cardBody}>
+            Important club news and updates appear here. Tap below to open the full feed.
           </ThemedText>
           <TouchableOpacity onPress={() => router.push('/news')} style={styles.linkRow}>
-            <ThemedText type="link">View news →</ThemedText>
+            <ThemedText style={styles.link}>View news</ThemedText>
+            <IconSymbol name="chevron.right" size={18} color={NeoAccent.purple[0]} />
           </TouchableOpacity>
-        </Card>
-
-        <Card accent elevated style={styles.sectionCard}>
-          <ThemedText type="subtitle" style={styles.sectionLabel}>Quick links</ThemedText>
-          <ThemedText style={styles.sectionBody}>
-            Your membership card and profile are in Profile. Need help? Open a casework request.
-          </ThemedText>
-          <View style={styles.quickLinks}>
-            <TouchableOpacity onPress={() => router.push('/profile')}>
-              <ThemedText type="link">Profile & card</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push('/casework')}>
-              <ThemedText type="link">Casework</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push('/polls')}>
-              <ThemedText type="link">Polls</ThemedText>
-            </TouchableOpacity>
-          </View>
-        </Card>
-      </ThemedView>
-    </ParallaxScrollView>
+        </GlassCard>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
+    flex: 1,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: Spacing.xl,
     gap: Spacing.xxl,
   },
-  hero: {
-    borderRadius: 16,
-    padding: Spacing.xl,
-    marginBottom: Spacing.lg,
+  card: {
+    marginBottom: 0,
   },
-  heroTitle: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
-  },
-  heroSubtitle: {
-    fontSize: 17,
-    color: 'rgba(255,255,255,0.92)',
-    marginTop: Spacing.sm,
-    lineHeight: 24,
-  },
-  sectionCard: {
-    marginTop: 0,
-  },
-  sectionLabel: {
+  statusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: Spacing.sm,
   },
-  sectionBody: {
-    opacity: 0.9,
-    marginBottom: Spacing.md,
+  label: {
+    fontSize: FontSize.sm,
+    color: NeoText.muted,
+    fontWeight: FontWeight.regular,
   },
-  linkRow: {
-    marginTop: Spacing.xs,
+  value: {
+    fontSize: FontSize.title,
+    fontWeight: FontWeight.bold,
+    color: NeoText.primary,
+    marginTop: 2,
   },
-  quickLinks: {
+  badge: {
+    overflow: 'hidden',
+    borderRadius: Radius.full,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    minWidth: 72,
+    alignItems: 'center',
+    position: 'relative',
+  },
+  badgeActive: {},
+  badgeText: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.bold,
+    color: NeoText.primary,
+  },
+  muted: {
+    fontSize: FontSize.sm,
+    color: NeoText.muted,
+  },
+  sectionTitle: {
+    fontSize: FontSize.subtitle,
+    fontWeight: FontWeight.semibold,
+    color: NeoText.primary,
+    marginBottom: Spacing.sm,
+  },
+  menuGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.lg,
-    marginTop: Spacing.sm,
+  },
+  quickTileWrap: {
+    width: '30%',
+    minWidth: 100,
+    flexGrow: 1,
+  },
+  quickTile: {
+    padding: Spacing.lg,
+    alignItems: 'center',
+    minHeight: 96,
+  },
+  quickIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.sm,
+  },
+  quickLabel: {
+    fontSize: 13,
+    fontWeight: FontWeight.semibold,
+    color: NeoText.secondary,
+  },
+  cardTitle: {
+    fontSize: FontSize.bodyLarge,
+    fontWeight: FontWeight.semibold,
+    color: NeoText.primary,
+    marginBottom: Spacing.sm,
+  },
+  cardBody: {
+    fontSize: FontSize.body,
+    color: NeoText.secondary,
+    lineHeight: 22,
+    marginBottom: Spacing.md,
+  },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  link: {
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.semibold,
+    color: NeoAccent.purple[0],
   },
 });

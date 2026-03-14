@@ -1,10 +1,11 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { GradientPortalBackground } from '@/components/GradientPortalBackground';
 import { NotActiveScreen } from '@/components/auth/NotActiveScreen';
 import { RegisterPushToken } from '@/components/RegisterPushToken';
 import { SignInScreen } from '@/components/auth/SignInScreen';
@@ -14,8 +15,13 @@ import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { MemberProvider, useMember } from '@/context/MemberContext';
 import { NewsProvider } from '@/context/NewsContext';
 import { PollsProvider } from '@/context/PollsContext';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useThemeColor } from '@/hooks/use-theme-color';
+
+// Fixed dark theme with transparent background so the gradient portal shows through everywhere.
+const AppTheme = {
+  ...DarkTheme,
+  colors: { ...DarkTheme.colors, background: 'transparent' },
+};
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -27,11 +33,11 @@ function TabsAndStack() {
       <NewsProvider>
         <PollsProvider>
           <ChatProvider>
-            <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }}>
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
             </Stack>
-            <StatusBar style="auto" />
+            <StatusBar style="light" />
           </ChatProvider>
         </PollsProvider>
       </NewsProvider>
@@ -42,12 +48,11 @@ function TabsAndStack() {
 /** When Supabase is used: gate main app until member is active (or show migration / subscribe options). */
 function ActiveGate() {
   const { memberStatus, isLoading } = useMember();
-  const backgroundColor = useThemeColor({}, 'background');
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor }}>
-        <ActivityIndicator size="large" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#B24BF3" />
       </View>
     );
   }
@@ -72,15 +77,14 @@ function AppContent() {
 
 function RootContent() {
   const { session, isLoading, isSupabaseConfigured } = useAuth();
-  const backgroundColor = useThemeColor({}, 'background');
 
   if (!isSupabaseConfigured) {
     return <AppContent />;
   }
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor }}>
-        <ActivityIndicator size="large" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#B24BF3" />
       </View>
     );
   }
@@ -91,15 +95,16 @@ function RootContent() {
 }
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={AppTheme}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
-          <AuthProvider>
-            <RootContent />
-          </AuthProvider>
+          <View style={{ flex: 1 }}>
+            <GradientPortalBackground />
+            <AuthProvider>
+              <RootContent />
+            </AuthProvider>
+          </View>
         </SafeAreaProvider>
       </GestureHandlerRootView>
     </ThemeProvider>

@@ -1,76 +1,46 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
+/**
+ * Tabs layout: global header (logo + PHD Matrix left, Home right) and tab content.
+ * No bottom tab bar; home screen is the main menu (large icon grid).
+ */
+import { Tabs, TabList, TabTrigger, TabSlot } from 'expo-router/ui';
+import { StyleSheet, View } from 'react-native';
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { AppHeader } from '@/components/AppHeader';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        tabBarInactiveTintColor: Colors[colorScheme ?? 'light'].tabIconDefault,
-        headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarStyle: {
-          backgroundColor: colorScheme === 'dark' ? '#1E293B' : '#FFFFFF',
-          borderTopColor: colorScheme === 'dark' ? '#334155' : '#E2E8F0',
-        },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '500' },
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.crop.circle" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="casework"
-        options={{
-          title: 'Casework',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="doc.text.magnifyingglass" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="news"
-        options={{
-          title: 'News',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="newspaper.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="polls"
-        options={{
-          title: 'Polls',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="checklist" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="chat"
-        options={{
-          title: 'Chat',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="message.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="more"
-        options={{
-          title: 'More',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="square.grid.2x2" color={color} />,
-        }}
-      />
+    <Tabs>
+      <AppHeader />
+      <View style={styles.slot}>
+        <TabSlot />
+      </View>
+
+      {/* Hidden TabList: defines routes for programmatic navigation. */}
+      <TabList style={styles.hiddenList}>
+        <TabTrigger name="index" href="/" />
+        <TabTrigger name="profile" href="/profile" />
+        <TabTrigger name="casework" href="/casework" />
+        <TabTrigger name="news" href="/news" />
+        <TabTrigger name="polls" href="/polls" />
+        <TabTrigger name="chat" href="/chat" />
+        <TabTrigger name="more" href="/more" />
+      </TabList>
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  slot: {
+    flex: 1,
+  },
+  hiddenList: {
+    position: 'absolute',
+    left: -9999,
+    top: 0,
+    width: 1,
+    height: 1,
+    overflow: 'hidden',
+    opacity: 0,
+    pointerEvents: 'none',
+  },
+});

@@ -1,4 +1,4 @@
-## Git + GitHub — daily checklist (DriverHub)
+## Git + GitHub — daily checklist (PHD Matrix)
 
 Use this when you sit down to work and when you finish. All commands run in **Command Prompt** from:
 

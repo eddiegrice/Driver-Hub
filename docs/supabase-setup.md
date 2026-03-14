@@ -1,4 +1,4 @@
-# Supabase setup for DriverHub
+# Supabase setup for PHD Matrix
 
 Follow these steps once to create your backend. You’ll need a Supabase account (free tier is enough to start).
 
@@ -10,7 +10,7 @@ Follow these steps once to create your backend. You’ll need a Supabase account
 2. Click **New project**.
 3. Choose an **organization** (or create one).
 4. Set:
-   - **Name:** e.g. `driverhub`
+   - **Name:** e.g. `phdmatrix`
    - **Database password:** choose a strong password and **save it somewhere safe** (you need it to connect to the DB).
    - **Region:** pick **London (eu-west-2)** or another **UK/EU** region so member data stays in the UK/EU.
 5. Click **Create new project** and wait until it’s ready.
@@ -54,11 +54,11 @@ The app signs you in with a **sign-in code** you enter in the app (no magic link
 2. Click **Email**. Ensure **Enable Email provider** is **on**.
 3. Go to **Authentication** → **Email Templates**.
 4. Click **Magic Link**.
-5. Change the **Subject** to something like: `Your DriverHub sign-in code`.
+5. Change the **Subject** to something like: `Your PHD Matrix sign-in code`.
 6. Replace the **Body** with a short message that includes the code. For example:
 
    ```
-   Your DriverHub sign-in code is:
+   Your PHD Matrix sign-in code is:
 
    {{ .Token }}
 

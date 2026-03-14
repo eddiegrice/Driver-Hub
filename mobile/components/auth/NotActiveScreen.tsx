@@ -30,15 +30,15 @@ export function NotActiveScreen() {
       ]}
       keyboardShouldPersistTaps="handled">
       <ThemedText type="title" style={styles.title}>
-        Get access to DriverHub
+        Get access to PHD Matrix
       </ThemedText>
       <ThemedText style={[styles.subtitle, { color: textMuted }]}>
-        Your DriverHub membership isn’t active yet. If you’ve already set up your direct debit on the website, please wait for confirmation or contact the office.
+        Your PHD Matrix membership isn’t active yet. If you’ve already set up your direct debit on the website, please wait for confirmation or contact the office.
       </ThemedText>
 
       <View style={styles.block}>
         <ThemedText style={[styles.message, { color: errorColor }]}>
-          Access to the app is limited to active DriverHub members.
+          Access to the app is limited to active PHD Matrix members.
         </ThemedText>
         <ThemedText style={[styles.hint, { color: textMuted }]}>
           If you’ve recently joined or updated your payment details, tap below to refresh your status. If your direct debit has failed or been cancelled, please contact the office to reactivate your membership.

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, TextInput } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { MembershipCard } from '@/components/MembershipCard';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
+import { TabScreenHeader } from '@/components/TabScreenHeader';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
@@ -72,55 +72,70 @@ export default function ProfileScreen() {
 
   if (isLoading) {
     return (
-      <ThemedView style={styles.centered}>
-        <ActivityIndicator size="large" color={tintColor} />
-        <ThemedText style={styles.loadingText}>Loading profile…</ThemedText>
-      </ThemedView>
+      <View style={styles.screen}>
+        <TabScreenHeader title="Profile" />
+        <ThemedView style={styles.centered}>
+          <ActivityIndicator size="large" color={tintColor} />
+          <ThemedText style={styles.loadingText}>Loading profile…</ThemedText>
+        </ThemedView>
+      </View>
     );
   }
 
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#F8FAFC', dark: '#0F172A' }}
-      headerImage={null}>
-      <ThemedView style={styles.container}>
-        <MembershipCard
-          name={form.name}
-          membershipNumber={form.membershipNumber}
-          status={form.membershipStatus}
-          membershipExpiry={form.membershipExpiry}
-        />
+    <View style={styles.screen}>
+      <TabScreenHeader title="Profile" />
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ThemedView style={styles.container}>
+          <MembershipCard
+            name={form.name}
+            membershipNumber={form.membershipNumber}
+            status={form.membershipStatus}
+            membershipExpiry={form.membershipExpiry}
+          />
 
-        <ThemedText type="subtitle" style={styles.sectionTitle}>
-          Your details
-        </ThemedText>
-        <ThemedText style={styles.helperText}>
-          Used for expiry reminders and to pre-fill casework requests.
-        </ThemedText>
+          <ThemedText type="subtitle" style={styles.sectionTitle}>
+            Your details
+          </ThemedText>
+          <ThemedText style={styles.helperText}>
+            Used for expiry reminders and to pre-fill casework requests.
+          </ThemedText>
 
-        <ScrollView style={styles.form} scrollEnabled={false}>
-          <FieldRow label="Full name" value={form.name} onChangeText={(t) => update('name', t)} placeholder="As on licence" />
-          <FieldRow label="Private hire badge number" value={form.badgeNumber} onChangeText={(t) => update('badgeNumber', t)} placeholder="Badge number" />
-          <FieldRow label="Badge expiry" value={form.badgeExpiry} onChangeText={(t) => update('badgeExpiry', t)} placeholder="YYYY-MM-DD" />
-          <FieldRow label="Vehicle registration" value={form.vehicleRegistration} onChangeText={(t) => update('vehicleRegistration', t)} placeholder="e.g. AB12 CDE" />
-          <FieldRow label="Vehicle make" value={form.vehicleMake} onChangeText={(t) => update('vehicleMake', t)} placeholder="e.g. Toyota" />
-          <FieldRow label="Vehicle model" value={form.vehicleModel} onChangeText={(t) => update('vehicleModel', t)} placeholder="e.g. Prius" />
-          <FieldRow label="Private hire plate number" value={form.plateNumber} onChangeText={(t) => update('plateNumber', t)} placeholder="Plate number" />
-          <FieldRow label="Plate expiry" value={form.plateExpiry} onChangeText={(t) => update('plateExpiry', t)} placeholder="YYYY-MM-DD" />
-        </ScrollView>
+          <View style={styles.form}>
+            <FieldRow label="Full name" value={form.name} onChangeText={(t) => update('name', t)} placeholder="As on licence" />
+            <FieldRow label="Private hire badge number" value={form.badgeNumber} onChangeText={(t) => update('badgeNumber', t)} placeholder="Badge number" />
+            <FieldRow label="Badge expiry" value={form.badgeExpiry} onChangeText={(t) => update('badgeExpiry', t)} placeholder="YYYY-MM-DD" />
+            <FieldRow label="Vehicle registration" value={form.vehicleRegistration} onChangeText={(t) => update('vehicleRegistration', t)} placeholder="e.g. AB12 CDE" />
+            <FieldRow label="Vehicle make" value={form.vehicleMake} onChangeText={(t) => update('vehicleMake', t)} placeholder="e.g. Toyota" />
+            <FieldRow label="Vehicle model" value={form.vehicleModel} onChangeText={(t) => update('vehicleModel', t)} placeholder="e.g. Prius" />
+            <FieldRow label="Private hire plate number" value={form.plateNumber} onChangeText={(t) => update('plateNumber', t)} placeholder="Plate number" />
+            <FieldRow label="Plate expiry" value={form.plateExpiry} onChangeText={(t) => update('plateExpiry', t)} placeholder="YYYY-MM-DD" />
+          </View>
 
-        <PrimaryButton
-          title={saving ? 'Saving…' : 'Save profile'}
-          onPress={handleSave}
-          disabled={saving}
-          fullWidth
-        />
-      </ThemedView>
-    </ParallaxScrollView>
+          <PrimaryButton
+            title={saving ? 'Saving…' : 'Save profile'}
+            onPress={handleSave}
+            disabled={saving}
+            fullWidth
+          />
+        </ThemedView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xxl,
+  },
   centered: {
     flex: 1,
     justifyContent: 'center',

@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
-import { StyleSheet, TouchableOpacity } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
-import ParallaxScrollView from '@/components/parallax-scroll-view';
+import { TabScreenHeader } from '@/components/TabScreenHeader';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Card } from '@/components/ui/Card';
@@ -15,21 +15,23 @@ export default function PollsListScreen() {
 
   if (isLoading) {
     return (
-      <ParallaxScrollView headerBackgroundColor={{ light: '#F8FAFC', dark: '#0F172A' }} headerImage={null}>
+      <View style={styles.screen}>
+        <TabScreenHeader title="Polls" />
         <ThemedView style={styles.centered}>
           <ThemedText>Loading…</ThemedText>
         </ThemedView>
-      </ParallaxScrollView>
+      </View>
     );
   }
 
   return (
-    <ParallaxScrollView headerBackgroundColor={{ light: '#F8FAFC', dark: '#0F172A' }} headerImage={null}>
-      <ThemedView style={styles.container}>
-        <ThemedText type="title">Polls &amp; Surveys</ThemedText>
-        <ThemedText style={styles.helperText}>
-          Take part in club polls and surveys. Results are only shown after a poll closes.
-        </ThemedText>
+    <View style={styles.screen}>
+      <TabScreenHeader title="Polls" />
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ThemedView style={styles.container}>
+          <ThemedText style={styles.helperText}>
+            Take part in club polls and surveys. Results are only shown after a poll closes.
+          </ThemedText>
 
         {openPolls.length > 0 && (
           <>
@@ -75,13 +77,26 @@ export default function PollsListScreen() {
         {openPolls.length === 0 && closedPolls.length === 0 && (
           <ThemedText style={styles.empty}>No polls at the moment.</ThemedText>
         )}
-      </ThemedView>
-    </ParallaxScrollView>
+        </ThemedView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xxl,
+  },
   centered: {
+    flex: 1,
     paddingVertical: Spacing.xxl,
     alignItems: 'center',
   },

@@ -71,7 +71,7 @@ export function SignInScreen() {
       style={[styles.container, { backgroundColor }]}>
       <View style={styles.content}>
         <ThemedText type="title" style={styles.title}>
-          Welcome to DriverHub
+          Welcome to PHD Matrix
         </ThemedText>
         <ThemedText style={[styles.subtitle, { color: textMuted }]}>
           Sign in with your email. We’ll send a code—no password needed.

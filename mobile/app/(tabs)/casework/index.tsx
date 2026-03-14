@@ -1,13 +1,12 @@
 import { useRouter } from 'expo-router';
-import { StyleSheet, TouchableOpacity } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
-import ParallaxScrollView from '@/components/parallax-scroll-view';
+import { TabScreenHeader } from '@/components/TabScreenHeader';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Card } from '@/components/ui/Card';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { useCasework } from '@/context/CaseworkContext';
-import { useThemeColor } from '@/hooks/use-theme-color';
 import { FontSize, Spacing } from '@/constants/theme';
 import { statusLabel } from '@/types/casework';
 import { formatDateForDisplay } from '@/types/member';
@@ -18,55 +17,70 @@ export default function CaseworkListScreen() {
 
   if (isLoading) {
     return (
-      <ParallaxScrollView headerBackgroundColor={{ light: '#F8FAFC', dark: '#0F172A' }} headerImage={null}>
+      <View style={styles.screen}>
+        <TabScreenHeader title="Casework" />
         <ThemedView style={styles.centered}>
           <ThemedText>Loading…</ThemedText>
         </ThemedView>
-      </ParallaxScrollView>
+      </View>
     );
   }
 
   return (
-    <ParallaxScrollView headerBackgroundColor={{ light: '#F8FAFC', dark: '#0F172A' }} headerImage={null}>
-      <ThemedView style={styles.container}>
-        <ThemedText type="title">My requests</ThemedText>
-        <ThemedText style={styles.helperText}>
-          Open a new request or tap one to view messages and status.
-        </ThemedText>
+    <View style={styles.screen}>
+      <TabScreenHeader title="Casework" />
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ThemedView style={styles.container}>
+          <ThemedText style={styles.helperText}>
+            Open a new request or tap one to view messages and status.
+          </ThemedText>
 
-        <PrimaryButton
-          title="New request"
-          onPress={() => router.push('/casework/new')}
-          fullWidth
-        />
+          <PrimaryButton
+            title="New request"
+            onPress={() => router.push('/casework/new')}
+            fullWidth
+          />
 
-        {tickets.length === 0 ? (
-          <ThemedText style={styles.empty}>No requests yet.</ThemedText>
-        ) : (
-          <ThemedView style={styles.list}>
-            {tickets.map((t) => (
-              <TouchableOpacity
-                key={t.id}
-                onPress={() => router.push(`/casework/${t.id}`)}
-                activeOpacity={0.8}>
-                <Card accent elevated style={styles.card}>
-                  <ThemedText type="defaultSemiBold">{t.type}</ThemedText>
-                  <ThemedText style={styles.subject} numberOfLines={1}>{t.subject || 'No subject'}</ThemedText>
-                  <ThemedText style={styles.meta}>
-                    {statusLabel(t.status)} · {formatDateForDisplay(t.createdAt.slice(0, 10))}
-                  </ThemedText>
-                </Card>
-              </TouchableOpacity>
-            ))}
-          </ThemedView>
-        )}
-      </ThemedView>
-    </ParallaxScrollView>
+          {tickets.length === 0 ? (
+            <ThemedText style={styles.empty}>No requests yet.</ThemedText>
+          ) : (
+            <ThemedView style={styles.list}>
+              {tickets.map((t) => (
+                <TouchableOpacity
+                  key={t.id}
+                  onPress={() => router.push(`/casework/${t.id}`)}
+                  activeOpacity={0.8}>
+                  <Card accent elevated style={styles.card}>
+                    <ThemedText type="defaultSemiBold">{t.type}</ThemedText>
+                    <ThemedText style={styles.subject} numberOfLines={1}>{t.subject || 'No subject'}</ThemedText>
+                    <ThemedText style={styles.meta}>
+                      {statusLabel(t.status)} · {formatDateForDisplay(t.createdAt.slice(0, 10))}
+                    </ThemedText>
+                  </Card>
+                </TouchableOpacity>
+              ))}
+            </ThemedView>
+          )}
+        </ThemedView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xxl,
+  },
   centered: {
+    flex: 1,
     paddingVertical: Spacing.xxl,
     alignItems: 'center',
   },

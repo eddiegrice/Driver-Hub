@@ -1,4 +1,4 @@
-# DriverHub — Backend & Product Plan
+# PHD Matrix — Backend & Product Plan
 
 **Purpose:** Single reference for backend, subscription, migration, and build order. Use this when implementing the backend, admin, or wiring the app to the server. Do not make app code changes that depend on the backend until the relevant phase is implemented.
 

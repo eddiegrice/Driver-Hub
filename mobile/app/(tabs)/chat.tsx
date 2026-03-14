@@ -13,9 +13,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Swipeable } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
+import { Swipeable } from 'react-native-gesture-handler';
+import { FrostedGlassView } from '@/components/FrostedGlassView';
+import { TabScreenHeader } from '@/components/TabScreenHeader';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useChat } from '@/context/ChatContext';
@@ -23,7 +24,7 @@ import { useMember } from '@/context/MemberContext';
 import { useAuth } from '@/context/AuthContext';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { Brand, FontSize, Radius, Spacing } from '@/constants/theme';
+import { Brand, FontSize, NeoGlass, Radius, Spacing } from '@/constants/theme';
 import type { ChatMessage, ReactionSummary } from '@/types/chat';
 import { CHAT_REACTION_EMOJIS } from '@/types/chat';
 
@@ -375,7 +376,7 @@ export default function ChatScreen() {
   useEffect(() => {
     const showSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e) => setKeyboardHeight(Math.max(0, e.endCoordinates.height - 56))
+      (e) => setKeyboardHeight(e.endCoordinates.height)
     );
     const hideSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
@@ -434,17 +435,14 @@ export default function ChatScreen() {
     );
   }
 
+  const composerBottomPadding = Math.max(insets.bottom, Spacing.lg) + Spacing.sm;
+
   return (
     <View style={[styles.container, { backgroundColor }]}>
-      <View style={[styles.chatContent, { paddingBottom: keyboardHeight }]}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + Spacing.md, paddingBottom: Spacing.md, borderBottomColor: borderColor }]}>
-        <View style={styles.headerRow}>
-          <View>
-            <ThemedText type="subtitle" style={styles.headerTitle}>Club Chat</ThemedText>
-            <ThemedText style={[styles.headerSubtitle, { color: mutedColor }]}>
-              {isLocked ? (chat.roomState?.lockedReason || 'Chat temporarily paused') : 'Members chat'}
-            </ThemedText>
+      <View style={styles.chatContent}>
+        <View style={styles.tabHeaderRow}>
+          <View style={styles.tabHeaderFlex}>
+            <TabScreenHeader title="Chat Group" />
           </View>
           {useSupabase && isMod && (
             <Pressable onPress={showModMenu} hitSlop={12} style={({ pressed }) => [styles.headerMenuBtn, pressed && styles.headerMenuBtnPressed]}>
@@ -452,65 +450,80 @@ export default function ChatScreen() {
             </Pressable>
           )}
         </View>
-      </View>
 
-      {useSupabase && chat.error && (
-        <View style={[styles.errorBar, { backgroundColor: surfaceColor, borderColor }]}>
-          <ThemedText style={styles.errorText}>{chat.error}</ThemedText>
-        </View>
-      )}
+        {/* Glass box container: margin so gradient shows around it */}
+        <View style={styles.glassBoxOuter}>
+          <View style={[styles.glassBox, { borderColor: NeoGlass.cardBorder }]}>
+            <FrostedGlassView borderRadius={Radius.lg - 1} style={styles.glassBoxFrosted}>
+              {useSupabase && chat.error && (
+                <View style={[styles.errorBar, { backgroundColor: surfaceColor, borderColor }]}>
+                  <ThemedText style={styles.errorText}>{chat.error}</ThemedText>
+                </View>
+              )}
 
-      {/* Message list */}
-      <FlatList
-        data={messages}
-        keyExtractor={(m) => m.id}
-        renderItem={renderItem}
-        contentContainerStyle={[styles.listContent, { paddingBottom: Spacing.lg }]}
-        inverted
-        keyboardDismissMode="on-drag"
-        keyboardShouldPersistTaps="handled"
-        onEndReached={useSupabase && chat.hasMore ? chat.fetchMore : undefined}
-        onEndReachedThreshold={0.3}
-      />
-
-      {/* Quote bar (when replying) */}
-      {replyingTo && (
-        <View style={[styles.quoteBarComposer, { backgroundColor: surfaceColor, borderColor }]}>
-          <View style={styles.quoteBarComposerInner}>
-            <ThemedText style={[styles.quoteBarLabel, { color: mutedColor }]}>Replying to {replyingTo.displayName}</ThemedText>
-            <ThemedText style={[styles.quoteBarSnippet, { color: textColor }]} numberOfLines={1}>{replyingTo.body}</ThemedText>
+              {/* Message list - scrolls inside the glass box, stops above composer */}
+              <FlatList
+                data={messages}
+                keyExtractor={(m) => m.id}
+                renderItem={renderItem}
+                contentContainerStyle={[styles.listContent, { paddingBottom: Spacing.lg }]}
+                inverted
+                keyboardDismissMode="on-drag"
+                keyboardShouldPersistTaps="handled"
+                onEndReached={useSupabase && chat.hasMore ? chat.fetchMore : undefined}
+                onEndReachedThreshold={0.3}
+              />
+            </FrostedGlassView>
           </View>
-          <Pressable onPress={() => setReplyingTo(null)} hitSlop={12}>
-            <ThemedText style={[styles.quoteBarCancel, { color: Brand.primary }]}>Cancel</ThemedText>
+        </View>
+
+        {/* Quote bar (when replying) - below glass box, above composer */}
+        {replyingTo && (
+          <View style={[styles.quoteBarComposer, { backgroundColor: surfaceColor, borderColor }]}>
+            <View style={styles.quoteBarComposerInner}>
+              <ThemedText style={[styles.quoteBarLabel, { color: mutedColor }]}>Replying to {replyingTo.displayName}</ThemedText>
+              <ThemedText style={[styles.quoteBarSnippet, { color: textColor }]} numberOfLines={1}>{replyingTo.body}</ThemedText>
+            </View>
+            <Pressable onPress={() => setReplyingTo(null)} hitSlop={12}>
+              <ThemedText style={[styles.quoteBarCancel, { color: Brand.primary }]}>Cancel</ThemedText>
+            </Pressable>
+          </View>
+        )}
+
+        {/* Composer - marginBottom: keyboardHeight moves it above keyboard (only source of shift, no gap) */}
+        <View
+          style={[
+            styles.composer,
+            {
+              paddingBottom: composerBottomPadding,
+              marginBottom: keyboardHeight,
+              borderTopColor: borderColor,
+            },
+          ]}
+        >
+          <TextInput
+            ref={inputRef}
+            style={[styles.input, { color: textColor, backgroundColor: surfaceColor, borderColor }]}
+            placeholder="Message…"
+            placeholderTextColor={mutedColor}
+            value={inputText}
+            onChangeText={setInputText}
+            multiline
+            maxLength={2000}
+            editable={!isLocked}
+          />
+          <Pressable
+            onPress={handleSend}
+            disabled={!inputText.trim() || isLocked}
+            style={({ pressed }) => [
+              styles.sendBtn,
+              { backgroundColor: Brand.primary },
+              (!inputText.trim() || isLocked) && styles.sendBtnDisabled,
+              pressed && styles.sendBtnPressed,
+            ]}>
+            <ThemedText style={styles.sendBtnLabel}>Send</ThemedText>
           </Pressable>
         </View>
-      )}
-
-      {/* Composer */}
-      <View style={[styles.composer, { paddingBottom: Spacing.lg, borderTopColor: borderColor }]}>
-        <TextInput
-          ref={inputRef}
-          style={[styles.input, { color: textColor, backgroundColor: surfaceColor, borderColor }]}
-          placeholder="Message…"
-          placeholderTextColor={mutedColor}
-          value={inputText}
-          onChangeText={setInputText}
-          multiline
-          maxLength={2000}
-          editable={!isLocked}
-        />
-        <Pressable
-          onPress={handleSend}
-          disabled={!inputText.trim() || isLocked}
-          style={({ pressed }) => [
-            styles.sendBtn,
-            { backgroundColor: Brand.primary },
-            (!inputText.trim() || isLocked) && styles.sendBtnDisabled,
-            pressed && styles.sendBtnPressed,
-          ]}>
-          <ThemedText style={styles.sendBtnLabel}>Send</ThemedText>
-        </Pressable>
-      </View>
       </View>
 
       {/* Mod: Suspend member modal */}
@@ -608,6 +621,24 @@ const styles = StyleSheet.create({
   chatContent: {
     flex: 1,
   },
+  glassBoxOuter: {
+    flex: 1,
+    marginHorizontal: Spacing.md,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.sm,
+    minHeight: 0,
+  },
+  glassBox: {
+    flex: 1,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    overflow: 'hidden',
+    minHeight: 0,
+  },
+  glassBoxFrosted: {
+    flex: 1,
+    minHeight: 0,
+  },
   centered: {
     justifyContent: 'center',
     alignItems: 'center',
@@ -625,14 +656,12 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: '#DC2626',
   },
-  header: {
-    paddingHorizontal: Spacing.xl,
-    borderBottomWidth: 1,
-  },
-  headerRow: {
+  tabHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+  },
+  tabHeaderFlex: {
+    flex: 1,
   },
   headerMenuBtn: {
     padding: Spacing.sm,
@@ -643,13 +672,6 @@ const styles = StyleSheet.create({
   headerMenuBtnText: {
     fontSize: 24,
     fontWeight: '600',
-  },
-  headerTitle: {
-    fontWeight: '600',
-  },
-  headerSubtitle: {
-    fontSize: FontSize.sm,
-    marginTop: 2,
   },
   listContent: {
     paddingHorizontal: Spacing.lg,
@@ -782,11 +804,11 @@ const styles = StyleSheet.create({
     fontSize: FontSize.body,
   },
   sendBtn: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
     borderRadius: Radius.md,
     justifyContent: 'center',
-    minHeight: 40,
+    minHeight: 36,
   },
   sendBtnDisabled: {
     opacity: 0.5,

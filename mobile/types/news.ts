@@ -7,6 +7,6 @@ export interface NewsPost {
   /** Plain text body; URLs in the text are made clickable in the UI */
   body: string;
   publishedAt: string; // ISO
-  /** Display name, e.g. "DriverHub" or admin name */
+  /** Display name, e.g. "PHD Matrix" or admin name */
   authorName: string;
 }

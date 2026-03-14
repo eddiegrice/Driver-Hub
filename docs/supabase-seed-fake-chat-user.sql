@@ -23,7 +23,7 @@ INSERT INTO auth.users (
   '00000000-0000-0000-0000-000000000000'::uuid,
   'authenticated',
   'authenticated',
-  'alex.fake@driverhub.local',
+  'alex.fake@phdmatrix.local',
   crypt('not-used', gen_salt('bf')),
   now(),
   '{"provider":"email","providers":["email"]}'::jsonb,
@@ -44,7 +44,7 @@ INSERT INTO auth.identities (
 ) VALUES (
   '11111111-2222-4333-8444-555555555555'::uuid,
   '11111111-2222-4333-8444-555555555555'::uuid,
-  jsonb_build_object('sub', '11111111-2222-4333-8444-555555555555'::text, 'email', 'alex.fake@driverhub.local'),
+  jsonb_build_object('sub', '11111111-2222-4333-8444-555555555555'::text, 'email', 'alex.fake@phdmatrix.local'),
   'email',
   '11111111-2222-4333-8444-555555555555'::text,
   now(),
@@ -55,7 +55,7 @@ INSERT INTO auth.identities (
 INSERT INTO public.members (id, email, name, membership_status)
 VALUES (
   '11111111-2222-4333-8444-555555555555'::uuid,
-  'alex.fake@driverhub.local',
+  'alex.fake@phdmatrix.local',
   'Alex',
   'active'
 ) ON CONFLICT (id) DO UPDATE SET name = 'Alex', membership_status = 'active';
