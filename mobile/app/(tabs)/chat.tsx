@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Swipeable } from 'react-native-gesture-handler';
 import { FrostedGlassView } from '@/components/FrostedGlassView';
 import { TabScreenHeader } from '@/components/TabScreenHeader';
@@ -113,6 +114,9 @@ function formatTime(iso: string): string {
 // -----------------------------------------------------------------------------
 // Bubble component
 // -----------------------------------------------------------------------------
+const BUBBLE_BORDER = 'rgba(255, 255, 255, 0.1)';
+const BUBBLE_GRADIENT_OWN = ['#00CCFF', '#040A4B'] as const;
+
 function ChatBubble({
   message,
   reactionSummaries,
@@ -124,8 +128,8 @@ function ChatBubble({
   isOwn: boolean;
   onLongPress: () => void;
 }) {
-  const backgroundLight = isOwn ? Brand.primary : '#E2E8F0';
-  const backgroundDark = isOwn ? Brand.primary : '#334155';
+  const backgroundLight = isOwn ? 'transparent' : '#E2E8F0';
+  const backgroundDark = isOwn ? 'transparent' : '#334155';
   const bubbleBg = useThemeColor(
     { light: backgroundLight, dark: backgroundDark },
     'surface'
@@ -147,7 +151,16 @@ function ChatBubble({
         isOwn && styles.bubbleWrapOwn,
         pressed && styles.bubblePressed,
       ]}>
-      <View style={[styles.bubble, { backgroundColor: bubbleBg }, isOwn && styles.bubbleOwn]}>
+      <View style={[styles.bubble, { backgroundColor: isOwn ? 'transparent' : bubbleBg, borderColor: BUBBLE_BORDER }, isOwn && styles.bubbleOwn]}>
+        {isOwn && (
+          <LinearGradient
+            colors={BUBBLE_GRADIENT_OWN as unknown as string[]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[StyleSheet.absoluteFill, styles.bubbleGradient]}
+          />
+        )}
+        <View style={styles.bubbleContent}>
         <ThemedText style={[styles.senderName, { color: isOwn ? 'rgba(255,255,255,0.95)' : Brand.primary }]} numberOfLines={1}>
           {isOwn ? 'You' : message.displayName}
         </ThemedText>
@@ -181,6 +194,7 @@ function ChatBubble({
             ))}
           </View>
         )}
+        </View>
       </View>
     </Pressable>
   );
@@ -453,7 +467,7 @@ export default function ChatScreen() {
 
         {/* Glass box container: margin so gradient shows around it */}
         <View style={styles.glassBoxOuter}>
-          <View style={[styles.glassBox, { borderColor: NeoGlass.cardBorder }]}>
+          <View style={[styles.glassBox, { borderColor: BUBBLE_BORDER }]}>
             <FrostedGlassView borderRadius={Radius.lg - 1} style={styles.glassBoxFrosted}>
               {useSupabase && chat.error && (
                 <View style={[styles.errorBar, { backgroundColor: surfaceColor, borderColor }]}>
@@ -695,16 +709,25 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   bubble: {
-    borderRadius: Radius.lg,
+    borderRadius: 16,
     paddingLeft: Spacing.md,
     paddingRight: Spacing.xl,
     paddingTop: Spacing.md,
     paddingBottom: Spacing.md,
     maxWidth: '100%',
     borderTopLeftRadius: 4,
+    borderWidth: 1,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  bubbleGradient: {
+    borderRadius: 15,
+  },
+  bubbleContent: {
+    position: 'relative',
   },
   bubbleOwn: {
-    borderTopLeftRadius: Radius.lg,
+    borderTopLeftRadius: 16,
     borderTopRightRadius: 4,
   },
   senderName: {

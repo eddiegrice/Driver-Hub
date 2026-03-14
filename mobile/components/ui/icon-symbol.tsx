@@ -28,6 +28,15 @@ const MAPPING = {
   'checklist': 'checklist',
   'square.grid.2x2': 'apps',
   'message.fill': 'chat',
+  // Menu placeholders
+  'car.fill': 'traffic',
+  'calendar': 'event',
+  'dollarsign.circle': 'calculate',
+  'creditcard.fill': 'card-membership',
+  'folder.fill': 'folder',
+  'poll': 'poll',
+  'gavel.fill': 'gavel',
+  'book.closed.fill': 'menu-book',
 } as IconMapping;
 
 /**

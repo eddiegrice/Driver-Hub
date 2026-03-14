@@ -13,13 +13,19 @@ type GlassCardProps = PropsWithChildren<{
   elevated?: boolean;
   /** Gradient border (e.g. Active Membership card): #00ccff → #1a0033 */
   gradientBorder?: boolean;
+  /** Override default card radius (e.g. Radius.lg to match glass menu box) */
+  borderRadius?: number;
+  /** Override border color (e.g. rgba(255,255,255,0.1) for light edge) */
+  borderColor?: string;
+  /** Override inner content padding */
+  contentStyle?: object;
   style?: object;
 }>;
 
-export function GlassCard({ children, elevated, gradientBorder, style }: GlassCardProps) {
-  const cardBorderRadius = Radius.card;
+export function GlassCard({ children, elevated, gradientBorder, borderRadius, borderColor, contentStyle, style }: GlassCardProps) {
+  const cardBorderRadius = borderRadius ?? Radius.card;
   const borderWidth = 1;
-  const borderColor = NeoGlass.cardBorder;
+  const resolvedBorderColor = borderColor ?? NeoGlass.cardBorder;
 
   if (gradientBorder) {
     return (
@@ -32,7 +38,7 @@ export function GlassCard({ children, elevated, gradientBorder, style }: GlassCa
         />
         <View style={[styles.gradientInner, { borderRadius: cardBorderRadius }]}>
           <FrostedGlassView borderRadius={cardBorderRadius} style={styles.frosted}>
-            <View style={styles.content}>{children}</View>
+            <View style={[styles.content, contentStyle]}>{children}</View>
           </FrostedGlassView>
         </View>
       </View>
@@ -46,12 +52,12 @@ export function GlassCard({ children, elevated, gradientBorder, style }: GlassCa
         {
           borderRadius: cardBorderRadius,
           borderWidth,
-          borderColor,
+          borderColor: resolvedBorderColor,
         },
         style,
       ]}>
       <FrostedGlassView borderRadius={cardBorderRadius - borderWidth} style={styles.frosted}>
-        <View style={styles.content}>{children}</View>
+        <View style={[styles.content, contentStyle]}>{children}</View>
       </FrostedGlassView>
     </View>
   );

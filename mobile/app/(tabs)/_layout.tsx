@@ -24,6 +24,13 @@ export default function TabLayout() {
         <TabTrigger name="polls" href="/polls" />
         <TabTrigger name="chat" href="/chat" />
         <TabTrigger name="more" href="/more" />
+        <TabTrigger name="traffic-alerts" href="/traffic-alerts" />
+        <TabTrigger name="local-events" href="/local-events" />
+        <TabTrigger name="earnings-calc" href="/earnings-calc" />
+        <TabTrigger name="library" href="/library" />
+        <TabTrigger name="petitions" href="/petitions" />
+        <TabTrigger name="docs-vault" href="/docs-vault" />
+        <TabTrigger name="member-e-card" href="/member-e-card" />
       </TabList>
     </Tabs>
   );
