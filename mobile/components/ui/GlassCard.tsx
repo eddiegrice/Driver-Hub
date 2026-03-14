@@ -19,13 +19,19 @@ type GlassCardProps = PropsWithChildren<{
   borderColor?: string;
   /** Override inner content padding */
   contentStyle?: object;
+  /** Smoked glass: lighter overlay (0.03) and blur 12 so gradient bleeds through */
+  sleek?: boolean;
   style?: object;
 }>;
 
-export function GlassCard({ children, elevated, gradientBorder, borderRadius, borderColor, contentStyle, style }: GlassCardProps) {
+const SLEEK_OVERLAY = 'rgba(255, 255, 255, 0.03)';
+const SLEEK_BLUR = 12;
+
+export function GlassCard({ children, elevated, gradientBorder, borderRadius, borderColor, contentStyle, sleek, style }: GlassCardProps) {
   const cardBorderRadius = borderRadius ?? Radius.card;
   const borderWidth = 1;
   const resolvedBorderColor = borderColor ?? NeoGlass.cardBorder;
+  const frostedProps = sleek ? { intensity: SLEEK_BLUR, overlayColor: SLEEK_OVERLAY } : {};
 
   if (gradientBorder) {
     return (
@@ -37,7 +43,7 @@ export function GlassCard({ children, elevated, gradientBorder, borderRadius, bo
           style={[styles.gradientBorder, { borderRadius: cardBorderRadius + borderWidth }]}
         />
         <View style={[styles.gradientInner, { borderRadius: cardBorderRadius }]}>
-          <FrostedGlassView borderRadius={cardBorderRadius} style={styles.frosted}>
+          <FrostedGlassView borderRadius={cardBorderRadius} style={styles.frosted} {...frostedProps}>
             <View style={[styles.content, contentStyle]}>{children}</View>
           </FrostedGlassView>
         </View>
@@ -56,7 +62,7 @@ export function GlassCard({ children, elevated, gradientBorder, borderRadius, bo
         },
         style,
       ]}>
-      <FrostedGlassView borderRadius={cardBorderRadius - borderWidth} style={styles.frosted}>
+      <FrostedGlassView borderRadius={cardBorderRadius - borderWidth} style={styles.frosted} {...frostedProps}>
         <View style={[styles.content, contentStyle]}>{children}</View>
       </FrostedGlassView>
     </View>

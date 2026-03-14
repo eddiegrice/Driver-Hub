@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
   },
   badgeActive: {
     color: '#0F172A',
-    backgroundColor: Brand.accent,
+    backgroundColor: '#00CCFF',
   },
   expiry: {
     fontSize: 14,

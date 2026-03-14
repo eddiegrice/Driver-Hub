@@ -95,9 +95,11 @@ export default function HomeScreen() {
       >
         <GlassCard
           elevated
+          gradientBorder={isActive}
           borderRadius={Radius.lg}
           borderColor={LIGHT_EDGE}
           contentStyle={styles.cardContent}
+          sleek
           style={styles.card}
         >
           <View style={styles.statusRow}>
@@ -350,7 +352,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.5)',
     paddingHorizontal: Spacing.sm,
     textTransform: 'uppercase',
-    letterSpacing: 1.2,
+    letterSpacing: 2,
   },
   menuRow: {
     flexDirection: 'row',
@@ -372,8 +374,9 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
     shadowColor: '#00CCFF',
     shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
     shadowRadius: 5,
-    shadowOpacity: 1,
+    elevation: 4,
   },
   menuItemLabel: {
     fontSize: FontSize.xs,

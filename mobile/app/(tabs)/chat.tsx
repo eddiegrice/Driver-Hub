@@ -468,7 +468,12 @@ export default function ChatScreen() {
         {/* Glass box container: margin so gradient shows around it */}
         <View style={styles.glassBoxOuter}>
           <View style={[styles.glassBox, { borderColor: BUBBLE_BORDER }]}>
-            <FrostedGlassView borderRadius={Radius.lg - 1} style={styles.glassBoxFrosted}>
+            <FrostedGlassView
+              borderRadius={Radius.lg - 1}
+              intensity={12}
+              overlayColor="rgba(255, 255, 255, 0.03)"
+              style={styles.glassBoxFrosted}
+            >
               {useSupabase && chat.error && (
                 <View style={[styles.errorBar, { backgroundColor: surfaceColor, borderColor }]}>
                   <ThemedText style={styles.errorText}>{chat.error}</ThemedText>
