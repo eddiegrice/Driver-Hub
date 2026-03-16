@@ -8,7 +8,7 @@ import { Spacing } from '@/constants/theme';
 export default function DocsVaultScreen() {
   return (
     <View style={styles.screen}>
-      <TabScreenHeader title="My Docs Vault" />
+      <TabScreenHeader title="Docs Vault" />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <ThemedView style={styles.container}>
           <ThemedText style={styles.placeholder}>

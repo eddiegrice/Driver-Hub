@@ -18,17 +18,25 @@ export default function TabLayout() {
       {/* Hidden TabList: defines routes for programmatic navigation. */}
       <TabList style={styles.hiddenList}>
         <TabTrigger name="index" href="/" />
-        <TabTrigger name="profile" href="/profile" />
-        <TabTrigger name="casework" href="/casework" />
-        <TabTrigger name="news" href="/news" />
-        <TabTrigger name="polls" href="/polls" />
+        <TabTrigger name="campaigns" href="/campaigns" />
         <TabTrigger name="chat" href="/chat" />
-        <TabTrigger name="more" href="/more" />
-        <TabTrigger name="traffic-alerts" href="/traffic-alerts" />
-        <TabTrigger name="local-events" href="/local-events" />
+        <TabTrigger name="petitions" href="/petitions" />
+        <TabTrigger name="polls" href="/polls" />
+        <TabTrigger name="casework" href="/casework" />
         <TabTrigger name="earnings-calc" href="/earnings-calc" />
         <TabTrigger name="library" href="/library" />
-        <TabTrigger name="petitions" href="/petitions" />
+        <TabTrigger name="news" href="/news" />
+        <TabTrigger name="events-gigs" href="/events-gigs" />
+        <TabTrigger name="events-sport" href="/events-sport" />
+        <TabTrigger name="events-other" href="/events-other" />
+        <TabTrigger name="traffic-incidents" href="/traffic-incidents" />
+        <TabTrigger name="traffic-current-roadworks" href="/traffic-current-roadworks" />
+        <TabTrigger name="traffic-future-roadworks" href="/traffic-future-roadworks" />
+        <TabTrigger name="traffic-journey-times" href="/traffic-journey-times" />
+        <TabTrigger name="traffic-flows" href="/traffic-flows" />
+        <TabTrigger name="traffic-vms-signs" href="/traffic-vms-signs" />
+        <TabTrigger name="motorway-status" href="/motorway-status/[code]" />
+        <TabTrigger name="profile" href="/profile" />
         <TabTrigger name="docs-vault" href="/docs-vault" />
         <TabTrigger name="member-e-card" href="/member-e-card" />
       </TabList>

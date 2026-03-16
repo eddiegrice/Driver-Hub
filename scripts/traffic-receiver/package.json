@@ -1,0 +1,16 @@
+{
+  "name": "traffic-receiver",
+  "version": "1.0.0",
+  "description": "Fetches Traffic Scotland DATEX II feed and upserts into Supabase",
+  "type": "module",
+  "scripts": {
+    "run": "node index.js",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.4.5",
+    "fast-xml-parser": "^4.3.2",
+    "node-fetch": "^3.3.2"
+  }
+}

@@ -16,7 +16,7 @@ export default function NewsListScreen() {
   if (isLoading) {
     return (
       <View style={styles.screen}>
-        <TabScreenHeader title="News & Updates" />
+        <TabScreenHeader title="Trade News" />
         <ThemedView style={styles.centered}>
           <ThemedText>Loading…</ThemedText>
         </ThemedView>
@@ -26,7 +26,7 @@ export default function NewsListScreen() {
 
   return (
     <View style={styles.screen}>
-      <TabScreenHeader title="News & Updates" />
+      <TabScreenHeader title="Trade News" />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <ThemedView style={styles.container}>
           <ThemedText style={styles.helperText}>

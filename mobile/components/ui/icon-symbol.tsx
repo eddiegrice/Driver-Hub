@@ -37,6 +37,15 @@ const MAPPING = {
   'poll': 'poll',
   'gavel.fill': 'gavel',
   'book.closed.fill': 'menu-book',
+  'megaphone.fill': 'campaign',
+  'music.note': 'library-music',
+  'soccerball': 'sports-soccer',
+  'exclamationmark.triangle.fill': 'warning',
+  'wrench.and.screwdriver': 'build',
+  'calendar.badge.clock': 'schedule',
+  'clock.fill': 'schedule',
+  'chart.line.uptrend.xyaxis': 'show-chart',
+  'signpost.left.fill': 'signpost',
 } as IconMapping;
 
 /**

@@ -456,7 +456,7 @@ export default function ChatScreen() {
       <View style={styles.chatContent}>
         <View style={styles.tabHeaderRow}>
           <View style={styles.tabHeaderFlex}>
-            <TabScreenHeader title="Chat Group" />
+            <TabScreenHeader title="Chat Room" />
           </View>
           {useSupabase && isMod && (
             <Pressable onPress={showModMenu} hitSlop={12} style={({ pressed }) => [styles.headerMenuBtn, pressed && styles.headerMenuBtnPressed]}>

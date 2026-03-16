@@ -11,6 +11,7 @@ import { RegisterPushToken } from '@/components/RegisterPushToken';
 import { SignInScreen } from '@/components/auth/SignInScreen';
 import { CaseworkProvider } from '@/context/CaseworkContext';
 import { ChatProvider } from '@/context/ChatContext';
+import { TrafficProvider } from '@/context/TrafficContext';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { MemberProvider, useMember } from '@/context/MemberContext';
 import { NewsProvider } from '@/context/NewsContext';
@@ -32,13 +33,15 @@ function TabsAndStack() {
     <CaseworkProvider>
       <NewsProvider>
         <PollsProvider>
-          <ChatProvider>
-            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }}>
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-            </Stack>
-            <StatusBar style="light" />
-          </ChatProvider>
+          <TrafficProvider>
+            <ChatProvider>
+              <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }}>
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+              </Stack>
+              <StatusBar style="light" />
+            </ChatProvider>
+          </TrafficProvider>
         </PollsProvider>
       </NewsProvider>
     </CaseworkProvider>

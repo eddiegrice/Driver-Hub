@@ -350,3 +350,60 @@ create policy "Users can manage own devices"
   on public.member_devices for all
   using (auth.uid() = member_id)
   with check (auth.uid() = member_id);
+
+-- ---------------------------------------------------------------------------
+-- Traffic Alerts: situations from Traffic Scotland DATEX II (receiver fills this)
+-- ---------------------------------------------------------------------------
+create table if not exists public.traffic_situations (
+  id uuid primary key default gen_random_uuid(),
+  external_id text not null,
+  source_publication text not null,
+  situation_type text not null,
+  title text,
+  description text,
+  location_name text,
+  location_direction text,
+  severity text,
+  start_time timestamptz,
+  end_time timestamptz,
+  raw_payload jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (external_id, source_publication)
+);
+
+create index if not exists idx_traffic_situations_type on public.traffic_situations(situation_type);
+create index if not exists idx_traffic_situations_times on public.traffic_situations(start_time, end_time);
+create index if not exists idx_traffic_situations_updated on public.traffic_situations(updated_at desc);
+
+alter table public.traffic_situations enable row level security;
+
+-- Members can read all traffic situations (receiver uses service role to write).
+drop policy if exists "Members can read traffic situations" on public.traffic_situations;
+create policy "Members can read traffic situations"
+  on public.traffic_situations for select
+  using (auth.role() = 'authenticated');
+
+-- ---------------------------------------------------------------------------
+-- Renfrew Bridge status (scraped from Renfrewshire Council website)
+-- ---------------------------------------------------------------------------
+create table if not exists public.bridge_status (
+  id text primary key,
+  name text not null,
+  status text not null check (status in ('open', 'closed', 'unknown')),
+  current_message text,
+  next_closure_start timestamptz,
+  next_closure_end timestamptz,
+  next_closure_message text,
+  source text not null default 'renfrewshire_council',
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_bridge_status_updated_at on public.bridge_status(updated_at desc);
+
+alter table public.bridge_status enable row level security;
+
+drop policy if exists "Members can read bridge status" on public.bridge_status;
+create policy "Members can read bridge status"
+  on public.bridge_status for select
+  using (auth.role() = 'authenticated');
