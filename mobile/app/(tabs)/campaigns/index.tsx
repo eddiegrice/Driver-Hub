@@ -1,21 +1,39 @@
 import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { CmsPostTile } from '@/components/CmsPostTile';
 import { TabScreenHeader } from '@/components/TabScreenHeader';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useNews } from '@/context/NewsContext';
 import { FontSize, NeoText, Spacing } from '@/constants/theme';
+import { fetchCmsPosts } from '@/lib/cms-supabase';
+import { supabase } from '@/lib/supabase';
+import type { CmsPost } from '@/types/cms';
 
-export default function NewsListScreen() {
+export default function CampaignsListScreen() {
   const router = useRouter();
-  const { posts, isLoading, error } = useNews();
+  const [posts, setPosts] = useState<CmsPost[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { posts: list, error: err } = await fetchCmsPosts(supabase, 'campaign');
+      if (!cancelled) {
+        setPosts(list);
+        setError(err);
+        setIsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   if (isLoading) {
     return (
       <View style={styles.screen}>
-        <TabScreenHeader title="News" />
+        <TabScreenHeader title="Campaigns" />
         <ThemedView style={styles.centered}>
           <ThemedText>Loading…</ThemedText>
         </ThemedView>
@@ -25,24 +43,24 @@ export default function NewsListScreen() {
 
   return (
     <View style={styles.screen}>
-      <TabScreenHeader title="News" />
+      <TabScreenHeader title="Campaigns" />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <ThemedView style={styles.container}>
           <ThemedText style={styles.helperText}>
-            Trade and licensing news from the club. Tap a post to read more.
+            Club campaigns and updates. Tap a post to read more.
           </ThemedText>
 
           {error ? (
             <ThemedText style={styles.errorText}>{error.message}</ThemedText>
           ) : posts.length === 0 ? (
-            <ThemedText style={styles.empty}>No posts yet.</ThemedText>
+            <ThemedText style={styles.empty}>No campaigns yet.</ThemedText>
           ) : (
             <ThemedView style={styles.list}>
               {posts.map((post) => (
                 <CmsPostTile
                   key={post.id}
                   post={post}
-                  onPress={() => router.push(`/news/${post.id}`)}
+                  onPress={() => router.push(`/campaigns/${post.id}`)}
                 />
               ))}
             </ThemedView>
@@ -54,12 +72,8 @@ export default function NewsListScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-  scroll: {
-    flex: 1,
-  },
+  screen: { flex: 1 },
+  scroll: { flex: 1 },
   scrollContent: {
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.md,
@@ -70,23 +84,9 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xxl,
     alignItems: 'center',
   },
-  container: {
-    gap: Spacing.xl,
-  },
-  helperText: {
-    color: NeoText.secondary,
-    fontSize: FontSize.body,
-  },
-  errorText: {
-    color: NeoText.error,
-    paddingVertical: Spacing.md,
-  },
-  empty: {
-    color: NeoText.muted,
-    paddingVertical: Spacing.xxl,
-    fontSize: FontSize.body,
-  },
-  list: {
-    paddingTop: Spacing.sm,
-  },
+  container: { gap: Spacing.xl },
+  helperText: { color: NeoText.secondary, fontSize: FontSize.body },
+  errorText: { color: NeoText.error, paddingVertical: Spacing.md },
+  empty: { color: NeoText.muted, paddingVertical: Spacing.xxl, fontSize: FontSize.body },
+  list: { paddingTop: Spacing.sm },
 });

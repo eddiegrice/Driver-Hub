@@ -24,6 +24,7 @@ import {
   Radius,
   Spacing,
 } from '@/constants/theme';
+import { CHAT_ROOM_VISIBLE } from '@/constants/features';
 
 const LIGHT_EDGE = 'rgba(255, 255, 255, 0.1)';
 const SMOKED_OVERLAY = 'rgba(255, 255, 255, 0.03)';
@@ -50,7 +51,7 @@ type MenuIconName =
   | 'chart.line.uptrend.xyaxis'
   | 'signpost.left.fill';
 
-/** Five menu boxes: each has a header and items. Order: Your PHD Matrix first, Glasgow Events Data last. */
+/** Four menu boxes: Your PHD Matrix, Collective (merged), Glasgow Traffic Data, Glasgow Events Data. */
 const MENU_BOXES: {
   title: string;
   items: { route: string; label: string; icon: MenuIconName }[];
@@ -67,22 +68,15 @@ const MENU_BOXES: {
   },
   {
     title: 'PHD Matrix: Collective Association',
-    itemsPerRow: 4,
+    itemsPerRow: 3,
     items: [
+      ...(CHAT_ROOM_VISIBLE ? [{ route: '/chat' as const, label: 'Chat Room' as const, icon: 'message.fill' as const }] : []),
       { route: '/campaigns', label: 'Campaigns', icon: 'megaphone.fill' },
-      { route: '/chat', label: 'Chat Room', icon: 'message.fill' },
+      { route: '/news', label: 'News', icon: 'newspaper.fill' },
+      { route: '/casework', label: 'Casework', icon: 'doc.text.magnifyingglass' },
+      { route: '/library', label: 'Library', icon: 'book.closed.fill' },
       { route: '/petitions', label: 'Petitions', icon: 'gavel.fill' },
       { route: '/polls', label: 'Polls', icon: 'poll' },
-    ],
-  },
-  {
-    title: 'Services & Tools',
-    itemsPerRow: 4,
-    items: [
-      { route: '/casework', label: 'Casework', icon: 'doc.text.magnifyingglass' },
-      { route: '/earnings-calc', label: 'Earnings Calc', icon: 'dollarsign.circle' },
-      { route: '/library', label: 'Library', icon: 'book.closed.fill' },
-      { route: '/news', label: 'Trade News', icon: 'newspaper.fill' },
     ],
   },
   {

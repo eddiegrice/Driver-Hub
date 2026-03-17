@@ -1,25 +1,30 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
-import { ensureSeeded, getStoredPosts } from '@/lib/news-storage';
-import type { NewsPost } from '@/types/news';
+import { supabase } from '@/lib/supabase';
+import { fetchCmsPosts } from '@/lib/cms-supabase';
+import type { CmsPost } from '@/types/cms';
 
 type NewsContextValue = {
-  posts: NewsPost[];
+  posts: CmsPost[];
   isLoading: boolean;
+  error: Error | null;
   refreshPosts: () => Promise<void>;
-  getPost: (id: string) => NewsPost | undefined;
+  getPost: (id: string) => CmsPost | undefined;
 };
 
 const NewsContext = createContext<NewsContextValue | null>(null);
 
 export function NewsProvider({ children }: { children: React.ReactNode }) {
-  const [posts, setPosts] = useState<NewsPost[]>([]);
+  const [posts, setPosts] = useState<CmsPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   const refreshPosts = useCallback(async () => {
     setIsLoading(true);
-    const list = await ensureSeeded();
+    setError(null);
+    const { posts: list, error: err } = await fetchCmsPosts(supabase, 'news');
     setPosts(list);
+    setError(err);
     setIsLoading(false);
   }, []);
 
@@ -35,6 +40,7 @@ export function NewsProvider({ children }: { children: React.ReactNode }) {
   const value: NewsContextValue = {
     posts,
     isLoading,
+    error,
     refreshPosts,
     getPost,
   };

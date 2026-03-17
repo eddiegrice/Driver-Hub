@@ -6,34 +6,28 @@ import { ArticleDetailContent } from '@/components/ArticleDetailContent';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useNews } from '@/context/NewsContext';
 import { fetchCmsPostById } from '@/lib/cms-supabase';
 import { supabase } from '@/lib/supabase';
 import type { CmsPost } from '@/types/cms';
 
-export default function NewsDetailScreen() {
+export default function LibraryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { getPost } = useNews();
-  const fromList = id ? getPost(id) : undefined;
-  const [fetchedPost, setFetchedPost] = useState<CmsPost | null>(null);
-  const [loadingId, setLoadingId] = useState(false);
+  const [post, setPost] = useState<CmsPost | null>(null);
+  const [loading, setLoading] = useState(!!id);
 
   useEffect(() => {
-    if (!id || fromList) return;
+    if (!id) return;
     let cancelled = false;
     (async () => {
-      setLoadingId(true);
-      const { post } = await fetchCmsPostById(supabase, id);
+      const { post: p } = await fetchCmsPostById(supabase, id);
       if (!cancelled) {
-        setFetchedPost(post ?? null);
-        setLoadingId(false);
+        setPost(p ?? null);
+        setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [id, fromList]);
-
-  const post = fromList ?? fetchedPost ?? undefined;
+  }, [id]);
 
   if (!id) {
     return (
@@ -48,7 +42,7 @@ export default function NewsDetailScreen() {
     );
   }
 
-  if (loadingId) {
+  if (loading) {
     return (
       <ParallaxScrollView headerBackgroundColor={{ light: '#f4f4f4', dark: '#121212' }} headerImage={null}>
         <ThemedView style={styles.container}>
@@ -75,7 +69,7 @@ export default function NewsDetailScreen() {
     <ParallaxScrollView headerBackgroundColor={{ light: '#f4f4f4', dark: '#121212' }} headerImage={null}>
       <ThemedView style={styles.container}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backRow}>
-          <ThemedText type="link">← Back to news</ThemedText>
+          <ThemedText type="link">← Back to library</ThemedText>
         </TouchableOpacity>
         <ArticleDetailContent post={post} />
       </ThemedView>
