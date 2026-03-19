@@ -14,6 +14,7 @@ import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { AssociationMembershipGate } from '@/components/AssociationMembershipGate';
 import { useCasework } from '@/context/CaseworkContext';
 import { useMember } from '@/context/MemberContext';
 import { useThemeColor } from '@/hooks/use-theme-color';
@@ -21,7 +22,7 @@ import { Radius, Spacing } from '@/constants/theme';
 import type { CaseworkAttachment, CaseworkType } from '@/types/casework';
 import { CASEWORK_TYPES } from '@/types/casework';
 
-export default function NewCaseworkScreen() {
+function NewCaseworkInner() {
   const router = useRouter();
   const { member } = useMember();
   const { createTicket } = useCasework();
@@ -163,6 +164,14 @@ export default function NewCaseworkScreen() {
         />
       </ThemedView>
     </ParallaxScrollView>
+  );
+}
+
+export default function NewCaseworkScreen() {
+  return (
+    <AssociationMembershipGate title="Casework">
+      <NewCaseworkInner />
+    </AssociationMembershipGate>
   );
 }
 

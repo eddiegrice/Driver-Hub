@@ -4,8 +4,9 @@ import { TabScreenHeader } from '@/components/TabScreenHeader';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { AssociationMembershipGate } from '@/components/AssociationMembershipGate';
 
-export default function PetitionsScreen() {
+function PetitionsInner() {
   return (
     <View style={styles.screen}>
       <TabScreenHeader title="Petitions" />
@@ -17,6 +18,14 @@ export default function PetitionsScreen() {
         </ThemedView>
       </ScrollView>
     </View>
+  );
+}
+
+export default function PetitionsScreen() {
+  return (
+    <AssociationMembershipGate title="Petitions">
+      <PetitionsInner />
+    </AssociationMembershipGate>
   );
 }
 

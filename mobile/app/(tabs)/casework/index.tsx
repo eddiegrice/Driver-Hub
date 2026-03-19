@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { TabScreenHeader } from '@/components/TabScreenHeader';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { AssociationMembershipGate } from '@/components/AssociationMembershipGate';
 import { Card } from '@/components/ui/Card';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { useCasework } from '@/context/CaseworkContext';
@@ -11,7 +12,7 @@ import { FontSize, Spacing } from '@/constants/theme';
 import { statusLabel } from '@/types/casework';
 import { formatDateForDisplay } from '@/types/member';
 
-export default function CaseworkListScreen() {
+function CaseworkListInner() {
   const router = useRouter();
   const { tickets, isLoading } = useCasework();
 
@@ -64,6 +65,14 @@ export default function CaseworkListScreen() {
         </ThemedView>
       </ScrollView>
     </View>
+  );
+}
+
+export default function CaseworkListScreen() {
+  return (
+    <AssociationMembershipGate title="Casework">
+      <CaseworkListInner />
+    </AssociationMembershipGate>
   );
 }
 

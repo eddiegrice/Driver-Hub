@@ -6,10 +6,11 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Card } from '@/components/ui/Card';
 import { usePolls } from '@/context/PollsContext';
+import { AssociationMembershipGate } from '@/components/AssociationMembershipGate';
 import { FontSize, Spacing } from '@/constants/theme';
 import { formatDateForDisplay } from '@/types/member';
 
-export default function PollsListScreen() {
+function PollsListInner() {
   const router = useRouter();
   const { openPolls, closedPolls, isLoading } = usePolls();
 
@@ -80,6 +81,14 @@ export default function PollsListScreen() {
         </ThemedView>
       </ScrollView>
     </View>
+  );
+}
+
+export default function PollsListScreen() {
+  return (
+    <AssociationMembershipGate title="Polls">
+      <PollsListInner />
+    </AssociationMembershipGate>
   );
 }
 

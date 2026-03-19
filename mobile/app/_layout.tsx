@@ -6,7 +6,6 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { GradientPortalBackground } from '@/components/GradientPortalBackground';
-import { NotActiveScreen } from '@/components/auth/NotActiveScreen';
 import { RegisterPushToken } from '@/components/RegisterPushToken';
 import { SignInScreen } from '@/components/auth/SignInScreen';
 import { CaseworkProvider } from '@/context/CaseworkContext';
@@ -48,7 +47,7 @@ function TabsAndStack() {
   );
 }
 
-/** When Supabase is used: gate main app until member is active (or show migration / subscribe options). */
+/** When Supabase is used: allow main app access for signed-in users; premium features are gated per-screen. */
 function ActiveGate() {
   const { memberStatus, isLoading } = useMember();
 
@@ -59,12 +58,9 @@ function ActiveGate() {
       </View>
     );
   }
-  if (!memberStatus.isActive) {
-    return <NotActiveScreen />;
-  }
   return (
     <>
-      <RegisterPushToken />
+      {memberStatus.isActive ? <RegisterPushToken /> : null}
       <TabsAndStack />
     </>
   );

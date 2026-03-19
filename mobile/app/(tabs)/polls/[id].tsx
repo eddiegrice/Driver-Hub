@@ -13,13 +13,14 @@ import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { usePolls } from '@/context/PollsContext';
+import { AssociationMembershipGate } from '@/components/AssociationMembershipGate';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import type { PollAnswer, PollQuestion } from '@/types/polls';
 import { formatDateForDisplay } from '@/types/member';
 import { isPollClosed } from '@/types/polls';
 
-export default function PollDetailScreen() {
+function PollDetailInner() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { getPoll, getMyResponse, submitResponse, getResults } = usePolls();
@@ -216,6 +217,14 @@ export default function PollDetailScreen() {
         </TouchableOpacity>
       </ThemedView>
     </ParallaxScrollView>
+  );
+}
+
+export default function PollDetailScreen() {
+  return (
+    <AssociationMembershipGate title="Polls">
+      <PollDetailInner />
+    </AssociationMembershipGate>
   );
 }
 

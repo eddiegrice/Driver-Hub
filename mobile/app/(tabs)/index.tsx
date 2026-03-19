@@ -1,4 +1,4 @@
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,6 +6,7 @@ import { ScrollView } from 'react-native';
 import { useEffect, useMemo, useState } from 'react';
 
 import { FrostedGlassView } from '@/components/FrostedGlassView';
+import { AssociationMembershipModal } from '@/components/AssociationMembershipModal';
 import { ThemedText } from '@/components/themed-text';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -49,12 +50,13 @@ type MenuIconName =
   | 'calendar.badge.clock'
   | 'clock.fill'
   | 'chart.line.uptrend.xyaxis'
-  | 'signpost.left.fill';
+  | 'signpost.left.fill'
+  | 'star.fill';
 
 /** Four menu boxes: Your PHD Matrix, Collective (merged), Glasgow Traffic Data, Glasgow Events Data. */
 const MENU_BOXES: {
   title: string;
-  items: { route: string; label: string; icon: MenuIconName }[];
+  items: { route: string; label: string; icon: MenuIconName; premium?: boolean }[];
   itemsPerRow: number;
 }[] = [
   {
@@ -67,16 +69,16 @@ const MENU_BOXES: {
     ],
   },
   {
-    title: 'PHD Matrix: Collective Association',
+    title: 'Association Members Only',
     itemsPerRow: 3,
     items: [
       ...(CHAT_ROOM_VISIBLE ? [{ route: '/chat' as const, label: 'Chat Room' as const, icon: 'message.fill' as const }] : []),
-      { route: '/campaigns', label: 'Campaigns', icon: 'megaphone.fill' },
-      { route: '/news', label: 'News', icon: 'newspaper.fill' },
-      { route: '/casework', label: 'Casework', icon: 'doc.text.magnifyingglass' },
-      { route: '/library', label: 'Library', icon: 'book.closed.fill' },
-      { route: '/petitions', label: 'Petitions', icon: 'gavel.fill' },
-      { route: '/polls', label: 'Polls', icon: 'poll' },
+      { route: '/campaigns', label: 'Campaigns', icon: 'megaphone.fill', premium: true },
+      { route: '/news', label: 'News', icon: 'newspaper.fill', premium: true },
+      { route: '/casework', label: 'Casework', icon: 'doc.text.magnifyingglass', premium: true },
+      { route: '/library', label: 'Library', icon: 'book.closed.fill', premium: true },
+      { route: '/petitions', label: 'Petitions', icon: 'gavel.fill', premium: true },
+      { route: '/polls', label: 'Polls', icon: 'poll', premium: true },
     ],
   },
   {
@@ -103,16 +105,18 @@ const MENU_BOXES: {
 ];
 
 export default function HomeScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { member } = useMember();
+  const { memberStatus } = useMember();
   const { situations } = useTraffic();
 
-  const membershipStatus = member?.membershipStatus ?? '—';
-  const isActive = membershipStatus === 'active';
+  const isActive = memberStatus.isActive;
+  const membershipStatus = memberStatus.membershipStatus;
 
   const [bridge, setBridge] = useState<BridgeStatus | null>(null);
   const [bridgeError, setBridgeError] = useState<Error | null>(null);
   const [bridgeLoading, setBridgeLoading] = useState(true);
+  const [membershipModalVisible, setMembershipModalVisible] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -143,6 +147,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.screen}>
+      <AssociationMembershipModal visible={membershipModalVisible} onClose={() => setMembershipModalVisible(false)} />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[
@@ -247,19 +252,28 @@ export default function HomeScreen() {
                   return rows;
                 }, []).map((row, rowIndex) => (
                   <View key={rowIndex} style={styles.menuRow}>
-                    {row.map(({ route, label, icon }) => (
-                      <Link key={`${route}-${label}`} href={route} asChild>
-                        <TouchableOpacity activeOpacity={0.8} style={styles.menuItem}>
-                          <View style={styles.menuIconWrap}>
-                            <View style={styles.menuIconInner}>
-                              <IconSymbol name={icon} size={28} color="#FFFFFF" style={styles.menuIconNudge} />
-                            </View>
+                    {row.map(({ route, label, icon, premium }) => (
+                      <TouchableOpacity
+                        key={`${route}-${label}`}
+                        activeOpacity={0.8}
+                        style={styles.menuItem}
+                        onPress={() => {
+                          if (premium && !isActive) {
+                            setMembershipModalVisible(true);
+                            return;
+                          }
+                          router.push(route);
+                        }}>
+                        <View style={styles.menuIconWrap}>
+                          <View style={styles.menuIconInner}>
+                            <IconSymbol name={icon} size={28} color="#FFFFFF" style={styles.menuIconNudge} />
                           </View>
-                          <ThemedText style={styles.menuItemLabel} numberOfLines={2}>
-                            {label}
-                          </ThemedText>
-                        </TouchableOpacity>
-                      </Link>
+                          {premium && <IconSymbol name="star.fill" size={16} color="#FFD166" style={styles.premiumStar} />}
+                        </View>
+                        <ThemedText style={styles.menuItemLabel} numberOfLines={2}>
+                          {label}
+                        </ThemedText>
+                      </TouchableOpacity>
                     ))}
                   </View>
                 ))}
@@ -489,6 +503,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.6,
     shadowRadius: 5,
     elevation: 4,
+    position: 'relative',
   },
   menuIconInner: {
     width: 28,
@@ -504,5 +519,10 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     fontWeight: FontWeight.semibold,
     color: NeoText.secondary,
+  },
+  premiumStar: {
+    position: 'absolute',
+    top: -4,
+    right: -3,
   },
 });

@@ -11,13 +11,14 @@ import {
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { AssociationMembershipGate } from '@/components/AssociationMembershipGate';
 import { useCasework } from '@/context/CaseworkContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { statusLabel } from '@/types/casework';
 import { formatDateForDisplay } from '@/types/member';
 
-export default function CaseworkDetailScreen() {
+function CaseworkDetailInner() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { getTicket, addMessage } = useCasework();
@@ -138,6 +139,14 @@ export default function CaseworkDetailScreen() {
         )}
       </ThemedView>
     </ParallaxScrollView>
+  );
+}
+
+export default function CaseworkDetailScreen() {
+  return (
+    <AssociationMembershipGate title="Casework">
+      <CaseworkDetailInner />
+    </AssociationMembershipGate>
   );
 }
 

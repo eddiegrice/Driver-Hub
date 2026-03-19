@@ -9,8 +9,9 @@ import { ThemedView } from '@/components/themed-view';
 import { fetchCmsPostById } from '@/lib/cms-supabase';
 import { supabase } from '@/lib/supabase';
 import type { CmsPost } from '@/types/cms';
+import { AssociationMembershipGate } from '@/components/AssociationMembershipGate';
 
-export default function LibraryDetailScreen() {
+function LibraryDetailInner() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [post, setPost] = useState<CmsPost | null>(null);
@@ -74,6 +75,14 @@ export default function LibraryDetailScreen() {
         <ArticleDetailContent post={post} />
       </ThemedView>
     </ParallaxScrollView>
+  );
+}
+
+export default function LibraryDetailScreen() {
+  return (
+    <AssociationMembershipGate title="Library">
+      <LibraryDetailInner />
+    </AssociationMembershipGate>
   );
 }
 

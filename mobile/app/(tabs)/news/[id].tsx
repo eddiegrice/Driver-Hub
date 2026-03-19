@@ -7,11 +7,12 @@ import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useNews } from '@/context/NewsContext';
+import { AssociationMembershipGate } from '@/components/AssociationMembershipGate';
 import { fetchCmsPostById } from '@/lib/cms-supabase';
 import { supabase } from '@/lib/supabase';
 import type { CmsPost } from '@/types/cms';
 
-export default function NewsDetailScreen() {
+function NewsDetailInner() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { getPost } = useNews();
@@ -80,6 +81,14 @@ export default function NewsDetailScreen() {
         <ArticleDetailContent post={post} />
       </ThemedView>
     </ParallaxScrollView>
+  );
+}
+
+export default function NewsDetailScreen() {
+  return (
+    <AssociationMembershipGate title="News">
+      <NewsDetailInner />
+    </AssociationMembershipGate>
   );
 }
 
