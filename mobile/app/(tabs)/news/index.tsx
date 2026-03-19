@@ -2,13 +2,14 @@ import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { CmsPostTile } from '@/components/CmsPostTile';
+import { AssociationMembershipGate } from '@/components/AssociationMembershipGate';
 import { TabScreenHeader } from '@/components/TabScreenHeader';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useNews } from '@/context/NewsContext';
 import { FontSize, NeoText, Spacing } from '@/constants/theme';
 
-export default function NewsListScreen() {
+function NewsListInner() {
   const router = useRouter();
   const { posts, isLoading, error } = useNews();
 
@@ -50,6 +51,14 @@ export default function NewsListScreen() {
         </ThemedView>
       </ScrollView>
     </View>
+  );
+}
+
+export default function NewsListScreen() {
+  return (
+    <AssociationMembershipGate title="News">
+      <NewsListInner />
+    </AssociationMembershipGate>
   );
 }
 

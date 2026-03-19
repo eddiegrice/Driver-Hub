@@ -21,16 +21,18 @@ type MemberRow = {
   subscription_active_until: string | null;
   migration_status: string | null;
   is_chat_moderator: boolean | null;
+  is_admin: boolean | null;
 };
 
 export type MemberStatus = {
   isActive: boolean;
   membershipStatus: MemberProfile['membershipStatus'];
   isChatModerator: boolean;
+  isAdmin: boolean;
 };
 
 const MEMBER_COLUMNS =
-  'name, badge_number, badge_expiry, vehicle_registration, vehicle_make, vehicle_model, plate_number, plate_expiry, membership_number, membership_status, membership_expiry, is_chat_moderator';
+  'name, badge_number, badge_expiry, vehicle_registration, vehicle_make, vehicle_model, plate_number, plate_expiry, membership_number, membership_status, membership_expiry, is_chat_moderator, is_admin';
 
 /** Active = membership_status === 'active'. All legacy / subscription logic is handled server-side. */
 export function isMemberActive(row: Pick<MemberRow, 'membership_status'>): boolean {
@@ -98,6 +100,7 @@ export async function getMemberWithStatus(
       isActive: isMemberActive(row),
       membershipStatus: profile.membershipStatus,
       isChatModerator: Boolean(row.is_chat_moderator),
+      isAdmin: Boolean(row.is_admin),
     },
   };
 }

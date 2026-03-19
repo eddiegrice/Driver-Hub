@@ -52,6 +52,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     try {
       const { data: { session: s } } = await supabase.auth.getSession();
+      if (!s) {
+        setSession(null);
+        return;
+      }
+
+      // If the auth user was deleted server-side, the cached session can still exist on device.
+      // Validate that the user still exists; otherwise clear the session so UI returns to Sign-In.
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        setSession(null);
+        return;
+      }
+
       setSession(s);
     } catch {
       setSession(null);

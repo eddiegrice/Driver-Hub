@@ -46,6 +46,8 @@ const MAPPING = {
   'clock.fill': 'schedule',
   'chart.line.uptrend.xyaxis': 'show-chart',
   'signpost.left.fill': 'signpost',
+  // Premium indicator overlay
+  'star.fill': 'star',
 } as IconMapping;
 
 /**

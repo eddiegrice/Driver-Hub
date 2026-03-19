@@ -9,8 +9,9 @@ import { ThemedView } from '@/components/themed-view';
 import { fetchCmsPostById } from '@/lib/cms-supabase';
 import { supabase } from '@/lib/supabase';
 import type { CmsPost } from '@/types/cms';
+import { AssociationMembershipGate } from '@/components/AssociationMembershipGate';
 
-export default function CampaignDetailScreen() {
+function CampaignDetailInner() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [post, setPost] = useState<CmsPost | null>(null);
@@ -74,6 +75,14 @@ export default function CampaignDetailScreen() {
         <ArticleDetailContent post={post} />
       </ThemedView>
     </ParallaxScrollView>
+  );
+}
+
+export default function CampaignDetailScreen() {
+  return (
+    <AssociationMembershipGate title="Campaigns">
+      <CampaignDetailInner />
+    </AssociationMembershipGate>
   );
 }
 

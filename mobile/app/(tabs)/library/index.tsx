@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { CmsPostTile } from '@/components/CmsPostTile';
+import { AssociationMembershipGate } from '@/components/AssociationMembershipGate';
 import { TabScreenHeader } from '@/components/TabScreenHeader';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -11,7 +12,7 @@ import { fetchCmsPosts } from '@/lib/cms-supabase';
 import { supabase } from '@/lib/supabase';
 import type { CmsPost } from '@/types/cms';
 
-export default function LibraryListScreen() {
+function LibraryListInner() {
   const router = useRouter();
   const [posts, setPosts] = useState<CmsPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,6 +69,14 @@ export default function LibraryListScreen() {
         </ThemedView>
       </ScrollView>
     </View>
+  );
+}
+
+export default function LibraryListScreen() {
+  return (
+    <AssociationMembershipGate title="Library">
+      <LibraryListInner />
+    </AssociationMembershipGate>
   );
 }
 

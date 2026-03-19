@@ -28,6 +28,8 @@ create table if not exists public.members (
   migration_status text check (migration_status in ('pending_migration', 'approved', 'declined')),
   -- Chat / moderation
   is_chat_moderator boolean not null default false,
+  -- Admin panel access (future use)
+  is_admin boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -41,6 +43,14 @@ do $$
 begin
   if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'members' and column_name = 'is_chat_moderator') then
     alter table public.members add column is_chat_moderator boolean not null default false;
+  end if;
+end $$;
+
+-- Add admin column if this script is re-run after members table already existed
+do $$
+begin
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'members' and column_name = 'is_admin') then
+    alter table public.members add column is_admin boolean not null default false;
   end if;
 end $$;
 
@@ -226,6 +236,7 @@ create policy "Chat: moderators can delete messages"
   );
 
 -- chat_reactions policies
+drop policy if exists "Chat: members can read reactions" on public.chat_reactions;
 create policy "Chat: members can read reactions"
   on public.chat_reactions for select
   using (

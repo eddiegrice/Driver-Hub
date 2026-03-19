@@ -20,11 +20,18 @@ create index if not exists idx_cms_posts_type_published_at
 
 alter table public.cms_posts enable row level security;
 
--- Authenticated members can read all published posts.
+-- Membership-only read: only active members can read premium CMS posts.
 drop policy if exists "Members can read cms_posts" on public.cms_posts;
 create policy "Members can read cms_posts"
   on public.cms_posts for select
-  using (auth.role() = 'authenticated');
+  using (
+    exists (
+      select 1
+      from public.members m
+      where m.id = auth.uid()
+        and m.membership_status = 'active'
+    )
+  );
 
 -- Insert/update/delete: use service role (admin panel or Supabase dashboard). No policy for anon/authenticated.
 

@@ -3,12 +3,12 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   StyleSheet,
   TextInput,
   View,
 } from 'react-native';
 
-import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
@@ -28,6 +28,8 @@ export function SignInScreen() {
   const textMuted = useThemeColor({}, 'textMuted');
   const successColor = useThemeColor({}, 'success');
   const errorColor = useThemeColor({}, 'error');
+
+  const cyanButtonColor = '#00CCFF';
 
   const handleSendCode = async () => {
     const trimmed = email.trim();
@@ -73,8 +75,13 @@ export function SignInScreen() {
         <ThemedText type="title" style={styles.title}>
           Welcome to PHD Matrix
         </ThemedText>
+        <View style={styles.headerSpace} />
         <ThemedText style={[styles.subtitle, { color: textMuted }]}>
-          Sign in with your email. We’ll send a code—no password needed.
+          Sign in or register with your email address.
+        </ThemedText>
+        <View style={styles.paragraphSpace} />
+        <ThemedText style={[styles.subtitle, { color: textMuted }]}>
+          If you already have an active association membership, please ensure you use the same email address used when previously subscribing.
         </ThemedText>
 
         <TextInput
@@ -111,12 +118,26 @@ export function SignInScreen() {
               maxLength={8}
               editable={status !== 'verifying'}
             />
-            <PrimaryButton
-              title={status === 'verifying' ? 'Verifying…' : 'Sign in with code'}
+            <Pressable
               onPress={handleVerifyCode}
               disabled={status === 'verifying' || code.length !== 8}
-              fullWidth
-            />
+              style={({ pressed }) => [
+                styles.sendBtn,
+                styles.cyanBtnBase,
+                status === 'verifying' && styles.sendBtnDisabled,
+                pressed && !(
+                  status === 'verifying' ||
+                  code.length !== 8
+                ) && styles.cyanBtnPressed,
+              ]}>
+              <ThemedText
+                style={[
+                  styles.sendBtnLabel,
+                  { opacity: status === 'verifying' ? 0.5 : 1 },
+                ]}>
+                {status === 'verifying' ? 'Verifying…' : 'Sign in with code'}
+              </ThemedText>
+            </Pressable>
             <ThemedText
               style={[styles.backLink, { color: textMuted }]}
               onPress={() => { setStatus('idle'); setCode(''); }}>
@@ -132,12 +153,22 @@ export function SignInScreen() {
                 {errorMessage}
               </ThemedText>
             )}
-            <PrimaryButton
-              title={status === 'sending' ? 'Sending…' : 'Send code'}
-              onPress={handleSendCode}
-              disabled={status === 'sending'}
-              fullWidth
-            />
+
+            <View style={{ width: '100%' }}>
+              <Pressable
+                onPress={handleSendCode}
+                disabled={status === 'sending'}
+                style={({ pressed }) => [
+                  styles.sendBtn,
+                  styles.cyanBtnBase,
+                  status === 'sending' && styles.sendBtnDisabled,
+                  pressed && status !== 'sending' && styles.cyanBtnPressed,
+                ]}>
+                <ThemedText style={[styles.sendBtnLabel, { opacity: status === 'sending' ? 0.5 : 1 }]}>
+                  {status === 'sending' ? 'Sending…' : 'Send code'}
+                </ThemedText>
+              </Pressable>
+            </View>
           </>
         )}
 
@@ -145,9 +176,6 @@ export function SignInScreen() {
           <ActivityIndicator size="small" style={styles.spinner} />
         )}
 
-        <ThemedText style={[styles.comingSoon, { color: textMuted }]}>
-          Sign in with Google and Apple will be available soon.
-        </ThemedText>
       </View>
     </KeyboardAvoidingView>
   );
@@ -166,6 +194,9 @@ const styles = StyleSheet.create({
   },
   title: {
     marginBottom: Spacing.sm,
+  },
+  headerSpace: {
+    height: Spacing.sm,
   },
   subtitle: {
     marginBottom: Spacing.xxl,
@@ -198,9 +229,29 @@ const styles = StyleSheet.create({
   spinner: {
     marginTop: Spacing.md,
   },
-  comingSoon: {
-    marginTop: Spacing.xxl,
-    fontSize: 13,
-    textAlign: 'center',
+  paragraphSpace: {
+    height: Spacing.lg,
+  },
+  sendBtn: {
+    width: '100%',
+    paddingVertical: Spacing.lg,
+    borderRadius: 16,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cyanBtnBase: {
+    backgroundColor: '#00CCFF',
+  },
+  cyanBtnPressed: {
+    opacity: 0.9,
+  },
+  sendBtnDisabled: {
+    opacity: 0.7,
+  },
+  sendBtnLabel: {
+    color: '#0F172A',
+    fontWeight: '600',
+    fontSize: 17,
   },
 });
