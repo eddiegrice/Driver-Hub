@@ -9,3 +9,14 @@ entrypoint = "./functions/traffic-receiver/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/traffic-receiver/*.html" ]
+
+[functions.ticketmaster-events]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/ticketmaster-events/index.ts"
+
+[functions.sportsdb-events]
+enabled = true
+# Cron / server invokes often use service_role only; false avoids JWT edge cases on invoke.
+verify_jwt = false
+entrypoint = "./functions/sportsdb-events/index.ts"

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { DateTime } from "https://esm.sh/luxon@3.5.0";
 
 type BridgeStatus = {
   id: string;
@@ -13,10 +14,17 @@ type BridgeStatus = {
   updated_at: string;
 };
 
+type ClosureWindow = {
+  startIso: string;
+  endIso: string;
+  message: string;
+};
+
 const DEFAULT_URL = "https://www.renfrewshire.gov.uk/renfrew-bridge";
 const DEFAULT_ID = "renfrew_bridge";
 const DEFAULT_NAME = "Renfrew Bridge";
 const SOURCE = "renfrewshire_council";
+const LONDON = "Europe/London";
 
 function extractNewsflash(html: string): string | null {
   const m = html.match(
@@ -26,7 +34,6 @@ function extractNewsflash(html: string): string | null {
 }
 
 function stripHtmlToText(html: string): string {
-  // Cheap + robust text extraction (avoid DOM libs in Edge runtime).
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
@@ -39,14 +46,191 @@ function stripHtmlToText(html: string): string {
     .trim();
 }
 
+function trimBeforeLastUpdated(text: string): string {
+  const i = text.search(/\s+last\s+updated\b/i);
+  return (i >= 0 ? text.slice(0, i) : text).trim();
+}
+
 function pickSentence(haystack: string, regex: RegExp): string | null {
   const m = haystack.match(regex);
   if (!m) return null;
-  // Grab some context around match to act as a readable “reason”.
   const idx = m.index ?? 0;
   const start = Math.max(0, idx - 80);
   const end = Math.min(haystack.length, idx + 180);
   return haystack.slice(start, end).trim();
+}
+
+const MONTHS: Record<string, number> = {
+  january: 1,
+  february: 2,
+  march: 3,
+  april: 4,
+  may: 5,
+  june: 6,
+  july: 7,
+  august: 8,
+  september: 9,
+  october: 10,
+  november: 11,
+  december: 12,
+};
+
+function toLondonIsoUtc(year: number, month: number, day: number, hour24: number, minute: number): string | null {
+  const dt = DateTime.fromObject(
+    { year, month, day, hour: hour24, minute, second: 0 },
+    { zone: LONDON },
+  );
+  if (!dt.isValid) return null;
+  return dt.toUTC().toISO();
+}
+
+/** 1–12 hour clock + am/pm → 24h { hour, minute } */
+function wall12To24(hour: number, minute: number, ap: string): { h: number; m: number } | null {
+  if (hour < 1 || hour > 12 || minute < 0 || minute > 59) return null;
+  const p = ap.toLowerCase();
+  let h = hour;
+  if (p === "am") {
+    if (h === 12) h = 0;
+  } else if (p === "pm") {
+    if (h !== 12) h += 12;
+  } else return null;
+  return { h, m: minute };
+}
+
+/**
+ * "The bridge will be closed … Friday 20 March 2026 … 8:15am - 9:15am"
+ */
+function parseWillBeClosedWindows(core: string): ClosureWindow[] {
+  const idx = core.search(/\bwill\s+be\s+closed\b/i);
+  if (idx < 0) return [];
+
+  const segment = core.slice(idx, idx + 2500);
+  const dateRe =
+    /(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})|(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/i;
+  const dm = segment.match(dateRe);
+  if (!dm) return [];
+
+  const day = Number(dm[1] ?? dm[4]);
+  const monName = (dm[2] ?? dm[5]).toLowerCase();
+  const year = Number(dm[3] ?? dm[6]);
+  const month = MONTHS[monName];
+  if (!day || !month || !year) return [];
+
+  const timeRe =
+    /(\d{1,2})[.:](\d{2})\s*(am|pm)\s*[-–—]\s*(\d{1,2})[.:](\d{2})\s*(am|pm)/i;
+  const tm = segment.match(timeRe);
+  if (!tm) return [];
+
+  const start = wall12To24(Number(tm[1]), Number(tm[2]), tm[3]);
+  const end = wall12To24(Number(tm[4]), Number(tm[5]), tm[6]);
+  if (!start || !end) return [];
+
+  const startIso = toLondonIsoUtc(year, month, day, start.h, start.m);
+  const endIso = toLondonIsoUtc(year, month, day, end.h, end.m);
+  if (!startIso || !endIso) return [];
+
+  const message = segment.slice(0, Math.min(segment.length, 380)).replace(/\s+/g, " ").trim();
+  return [{ startIso, endIso, message }];
+}
+
+function parseNextClosureRangeLuxon(next: string | null): { start: string | null; end: string | null } {
+  if (!next) return { start: null, end: null };
+  const s = next.replace(/\s+/g, " ").trim();
+  const re =
+    /\bfrom\s+(.{6,80}?)\s+\b(to|until|till)\b\s+(.{6,80}?)(?:\.|$)/i;
+  const m = s.match(re);
+  if (!m) return { start: null, end: null };
+
+  const formats = [
+    "d/M/yyyy HH:mm",
+    "d/M/yyyy H:mm",
+    "d/M/yyyy",
+    "d MMMM yyyy HH:mm",
+    "d MMMM yyyy H:mm",
+    "d MMMM yyyy h:mm a",
+    "d MMMM yyyy h:mma",
+    "d MMMM yyyy",
+  ];
+
+  const parseChunk = (raw: string): DateTime | null => {
+    const t = raw.trim().replace(/(\.|,)+$/g, "");
+    for (const f of formats) {
+      const dt = DateTime.fromFormat(t, f, { zone: LONDON, locale: "en-GB" });
+      if (dt.isValid) return dt;
+    }
+    const isoTry = DateTime.fromISO(t, { zone: LONDON });
+    return isoTry.isValid ? isoTry : null;
+  };
+
+  const a = parseChunk(m[1]);
+  const b = parseChunk(m[3]);
+  return {
+    start: a?.toUTC().toISO() ?? null,
+    end: b?.toUTC().toISO() ?? null,
+  };
+}
+
+function mergeWindows(windows: ClosureWindow[]): ClosureWindow[] {
+  const seen = new Set<string>();
+  const out: ClosureWindow[] = [];
+  for (const w of windows) {
+    const k = `${w.startIso}|${w.endIso}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(w);
+  }
+  out.sort((x, y) => Date.parse(x.startIso) - Date.parse(y.startIso));
+  return out;
+}
+
+/** True if "closed" at this index is part of a future-tense phrase (e.g. "will be closed"). */
+function isFutureTenseClosed(text: string, closedMatchIndex: number): boolean {
+  const before = text.slice(Math.max(0, closedMatchIndex - 50), closedMatchIndex);
+  return /(?:^|\s)(?:will|going)\s+to\s+be\s+$/i.test(before) ||
+    /(?:^|\s)scheduled\s+to\s+be\s+$/i.test(before) ||
+    /(?:^|\s)will\s+be\s+$/i.test(before);
+}
+
+/**
+ * Treat as currently closed only when wording indicates present closure, not a future announcement.
+ */
+function findPresentClosedCue(text: string): string | null {
+  const patterns: RegExp[] = [
+    /\bcurrently\s+closed\b/gi,
+    /\bclosed\s+to\s+(?:both\s+)?(?:road|pedestrian|vehicles|traffic|all\s+traffic)\b/gi,
+    /\bbridge\s+closure\b/gi,
+    /\bis\s+now\s+closed\b/gi,
+  ];
+  for (const re of patterns) {
+    re.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text)) !== null) {
+      const inner = /\bclosed\b/i.exec(m[0]);
+      const closedIdx = inner ? m.index + (inner.index ?? 0) : m.index;
+      if (!isFutureTenseClosed(text, closedIdx)) {
+        const start = Math.max(0, m.index - 60);
+        const end = Math.min(text.length, m.index + 140);
+        return text.slice(start, end).trim();
+      }
+    }
+  }
+
+  let m: RegExpExecArray | null;
+  const bare = /\bclosed\b/gi;
+  while ((m = bare.exec(text)) !== null) {
+    if (!isFutureTenseClosed(text, m.index)) {
+      const start = Math.max(0, m.index - 60);
+      const end = Math.min(text.length, m.index + 120);
+      return text.slice(start, end).trim();
+    }
+  }
+  return null;
+}
+
+function findOpenCue(text: string): string | null {
+  const openRe =
+    /\b(currently\s+)?open\b|\bopen\s+as\s+normal\b|\bopen\s+to\s+(?:both\s+)?(?:road|pedestrian|vehicles|traffic|all\s+traffic)\b/gi;
+  return pickSentence(text, openRe);
 }
 
 function parseStatus(
@@ -59,141 +243,87 @@ function parseStatus(
   start: string | null;
   end: string | null;
 } {
-  const lower = text.toLowerCase();
+  const core = trimBeforeLastUpdated(text);
   const nowMs = now.getTime();
 
-  // Explicit \"no closures planned\" cue – treat as OPEN.
   const noClosuresRe = /\bno\s+closures?\s+currently\s+planned\b/i;
-  const noClosures = pickSentence(text, noClosuresRe);
+  const noClosures = pickSentence(core, noClosuresRe);
   if (noClosures) {
     return { status: "open", current: noClosures, next: null, start: null, end: null };
   }
 
-  // Current status cues (more conservative; we store matched context for debugging).
-  const closedRe = /\b(currently\s+)?closed\b|\bclosed\s+to\s+(vehicles|traffic|all traffic)\b|\bbridge\s+closure\b/gi;
-  const openRe = /\b(currently\s+)?open\b|\bopen\s+as\s+normal\b|\bopen\s+to\s+(vehicles|traffic|all traffic)\b/gi;
+  let windows = mergeWindows([...parseWillBeClosedWindows(core)]);
 
-  // “Next planned closure” cues: e.g. “will be closed from <date> to <date>”.
-  const nextRe = /\bnext\s+planned\s+closure\b[\s\S]{0,220}|\bplanned\s+closure\b[\s\S]{0,220}|\bwill\s+be\s+closed\b[\s\S]{0,220}/i;
-
-  const next = pickSentence(text, nextRe);
-  const range = parseNextClosureRange(next);
-
-  let status: BridgeStatus["status"] = "unknown";
-  let current: string | null = null;
-
-  // If we have a closure window, decide if it is future-only or currently active.
-  if (next && (range.start || range.end)) {
-    const startMs = range.start ? Date.parse(range.start) : null;
-    const endMs = range.end ? Date.parse(range.end) : null;
-    const within =
-      startMs !== null && endMs !== null &&
-      Number.isFinite(startMs) && Number.isFinite(endMs) &&
-      nowMs >= startMs && nowMs <= endMs;
-
-    if (within) {
-      status = "closed";
-      current = next;
-    } else {
-      // Future (or past) closure window → keep bridge open for now, but expose next_closure_*.
-      status = "open";
-      current = null;
-    }
+  const nextRe =
+    /\bnext\s+planned\s+closure\b[\s\S]{0,220}|\bplanned\s+closure\b[\s\S]{0,220}|\bwill\s+be\s+closed\b[\s\S]{0,220}/i;
+  const nextSentence = pickSentence(core, nextRe);
+  const fromTo = parseNextClosureRangeLuxon(nextSentence);
+  if (fromTo.start && fromTo.end) {
+    windows = mergeWindows([
+      ...windows,
+      {
+        startIso: fromTo.start,
+        endIso: fromTo.end,
+        message: nextSentence ?? "",
+      },
+    ]);
   }
 
-  // If we still don't have an explicit status, fall back to generic cues.
-  if (status === "unknown") {
-    const closed = pickSentence(text, closedRe);
-    if (closed) {
-      status = "closed";
-      current = closed;
-    } else {
-      const open = pickSentence(text, openRe);
-      if (open) {
-        status = "open";
-        current = open;
+  if (windows.length > 0) {
+    for (const w of windows) {
+      const startMs = Date.parse(w.startIso);
+      const endMs = Date.parse(w.endIso);
+      if (nowMs >= startMs && nowMs <= endMs) {
+        return {
+          status: "closed",
+          current: w.message,
+          next: w.message,
+          start: w.startIso,
+          end: w.endIso,
+        };
       }
     }
+
+    const upcoming = windows.find((w) => nowMs < Date.parse(w.startIso));
+    if (upcoming) {
+      return {
+        status: "open",
+        current: null,
+        next: upcoming.message,
+        start: upcoming.startIso,
+        end: upcoming.endIso,
+      };
+    }
+
+    const last = windows[windows.length - 1];
+    const endMs = Date.parse(last.endIso);
+    if (nowMs > endMs) {
+      return {
+        status: "open",
+        current: null,
+        next: null,
+        start: null,
+        end: null,
+      };
+    }
   }
 
-  return { status, current, next, start: range.start, end: range.end };
-}
-
-function parseUkDateTime(input: string): Date | null {
-  const s = input.trim().replace(/(\.|,)+$/g, "");
-  // Support:
-  // - "15/03/2026 10:30"
-  // - "15 March 2026 10:30"
-  // - "15 March 2026" (assume 00:00)
-  const m1 = s.match(
-    /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?$/i,
-  );
-  if (m1) {
-    const dd = Number(m1[1]);
-    const mm = Number(m1[2]);
-    const yyyy = Number(m1[3]);
-    const hh = m1[4] ? Number(m1[4]) : 0;
-    const mi = m1[5] ? Number(m1[5]) : 0;
-    if (!dd || !mm || !yyyy) return null;
-    return new Date(Date.UTC(yyyy, mm - 1, dd, hh, mi, 0));
+  const closed = findPresentClosedCue(core);
+  if (closed) {
+    return { status: "closed", current: closed, next: nextSentence, start: null, end: null };
   }
 
-  const monthMap: Record<string, number> = {
-    january: 1,
-    february: 2,
-    march: 3,
-    april: 4,
-    may: 5,
-    june: 6,
-    july: 7,
-    august: 8,
-    september: 9,
-    october: 10,
-    november: 11,
-    december: 12,
-  };
-  const m2 = s.match(
-    /^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})(?:\s+(\d{1,2}):(\d{2}))?$/i,
-  );
-  if (m2) {
-    const dd = Number(m2[1]);
-    const mon = monthMap[m2[2].toLowerCase()];
-    const yyyy = Number(m2[3]);
-    const hh = m2[4] ? Number(m2[4]) : 0;
-    const mi = m2[5] ? Number(m2[5]) : 0;
-    if (!dd || !mon || !yyyy) return null;
-    return new Date(Date.UTC(yyyy, mon - 1, dd, hh, mi, 0));
+  const open = findOpenCue(core);
+  if (open) {
+    return { status: "open", current: open, next: nextSentence, start: null, end: null };
   }
 
-  return null;
-}
-
-function parseNextClosureRange(next: string | null): { start: string | null; end: string | null } {
-  if (!next) return { start: null, end: null };
-  const s = next.replace(/\s+/g, " ").trim();
-
-  // Try "from <date/time> to <date/time>"
-  const re =
-    /\bfrom\s+(.{6,60}?)\s+\b(to|until|till)\b\s+(.{6,60}?)(?:\.|$)/i;
-  const m = s.match(re);
-  if (!m) return { start: null, end: null };
-
-  const startRaw = m[1].trim();
-  const endRaw = m[3].trim();
-
-  // If end omits year/date, parsing might fail; we still keep message-only.
-  const start = parseUkDateTime(startRaw);
-  const end = parseUkDateTime(endRaw);
-  return {
-    start: start ? start.toISOString() : null,
-    end: end ? end.toISOString() : null,
-  };
+  return { status: "unknown", current: null, next: nextSentence, start: null, end: null };
 }
 
 async function fetchCouncilPage(url: string): Promise<string> {
   const res = await fetch(url, {
     headers: {
-      // Some council sites block default runtimes; use a common browser UA.
       "user-agent":
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
       "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -212,11 +342,13 @@ serve(async (req) => {
       return new Response("Method Not Allowed", { status: 405 });
     }
 
-    // Supabase_*-prefixed env vars are reserved; use custom names for this function.
     const supabaseUrl = Deno.env.get("BRIDGE_SUPABASE_URL") ?? "";
     const serviceRoleKey = Deno.env.get("BRIDGE_SUPABASE_SERVICE_ROLE_KEY") ?? "";
     if (!supabaseUrl || !serviceRoleKey) {
-      return new Response("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY", { status: 500 });
+      return new Response(
+        "Missing BRIDGE_SUPABASE_URL or BRIDGE_SUPABASE_SERVICE_ROLE_KEY",
+        { status: 500 },
+      );
     }
 
     const url = Deno.env.get("RENFREW_BRIDGE_URL") ?? DEFAULT_URL;

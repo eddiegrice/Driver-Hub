@@ -29,8 +29,8 @@ You’ll need the Supabase CLI installed and logged in.
 
 Set these secrets for the function:
 
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
+- `BRIDGE_SUPABASE_URL` (your project URL)
+- `BRIDGE_SUPABASE_SERVICE_ROLE_KEY` (service role key)
 
 Optional overrides:
 
@@ -44,7 +44,7 @@ From the repo root (example):
 
 ```bash
 supabase functions deploy renfrew-bridge-status
-supabase secrets set SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=...
+supabase secrets set BRIDGE_SUPABASE_URL=... BRIDGE_SUPABASE_SERVICE_ROLE_KEY=...
 ```
 
 ### Test it manually
@@ -75,8 +75,11 @@ The mobile app reads the status from Supabase, so ensure these are set in the Ex
 
 ## Notes / reliability
 
-- The council website may change wording/format. The scraper is intentionally defensive:
-  - It stores the **matched snippet** as `current_message`
-  - It stores any “next planned closure” snippet as `next_closure_message`
-  - It *attempts* to parse `from ... to ...` into `next_closure_start/end` when dates are in a recognisable UK format.
+- **Scheduled closures:** Phrases like “will be closed” plus a date and a time range (e.g. `8:15am - 9:15am`) are parsed with **Europe/London** wall time (via Luxon). Until the window starts, the row is stored as **open** with `next_closure_start` / `next_closure_end` set; during the window, **closed**. Text after **Last Updated** is ignored when parsing so the “last updated” timestamp is not mistaken for a closure.
+- **Present vs future:** The word “closed” inside **will be closed** does not count as “closed now”. Present closure uses cues like *currently closed*, *closed to traffic*, *bridge closure*, etc.
+- The council website may change wording/format. The scraper also stores:
+  - `current_message` when the bridge is treated as closed *now*
+  - `next_closure_message` for the matched closure snippet when applicable
+  - `from … to …` style windows when present in that snippet (UK-style dates)
+- The app recomputes OPEN/CLOSED from `next_closure_start` / `next_closure_end` against the device clock so the pill stays correct between scraper runs, and shows a short **warning** before and during a known window.
 

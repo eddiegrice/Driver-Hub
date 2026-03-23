@@ -418,3 +418,36 @@ drop policy if exists "Members can read bridge status" on public.bridge_status;
 create policy "Members can read bridge status"
   on public.bridge_status for select
   using (auth.role() = 'authenticated');
+
+-- ---------------------------------------------------------------------------
+-- Glasgow Events: next upcoming events banner (TicketMaster + TheSportsDB)
+-- ---------------------------------------------------------------------------
+create table if not exists public.glasgow_events (
+  id uuid primary key default gen_random_uuid(),
+  source text not null check (source in ('ticketmaster', 'sportsdb')),
+  external_id text not null,
+  category text not null check (category in ('gig', 'sport')),
+  venue_key text not null,
+  venue_name text not null,
+  title text not null,
+  start_time timestamptz,
+  home_team text,
+  away_team text,
+  url text,
+  status text,
+  raw_payload jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (source, external_id)
+);
+
+create index if not exists idx_glasgow_events_start_time on public.glasgow_events(start_time);
+create index if not exists idx_glasgow_events_venue_key on public.glasgow_events(venue_key);
+create index if not exists idx_glasgow_events_updated_at on public.glasgow_events(updated_at desc);
+
+alter table public.glasgow_events enable row level security;
+
+drop policy if exists "Members can read glasgow events" on public.glasgow_events;
+create policy "Members can read glasgow events"
+  on public.glasgow_events for select
+  using (auth.role() = 'authenticated');

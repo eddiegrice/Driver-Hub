@@ -36,12 +36,13 @@ export function CommandCenterTiles({ items }: { items: MotorwayStatus[] }) {
               <ThemedText
                 style={[
                   styles.status,
+                  item.hasProblems && styles.statusAlerts,
                   item.hasProblems ? styles.statusProblem : styles.statusOk,
                 ]}
                 numberOfLines={2}
               >
                 {item.hasProblems
-                  ? `${item.count} active situation${item.count > 1 ? 's' : ''}`
+                  ? `${item.count} Alert${item.count === 1 ? '' : 's'}`
                   : 'ALL OK'}
               </ThemedText>
               <ThemedText style={styles.meta}>
@@ -88,6 +89,10 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,
     textAlign: 'center',
+  },
+  /** Slightly larger than ALL OK for the alert count line */
+  statusAlerts: {
+    fontSize: FontSize.sm + 3,
   },
   statusOk: {
     color: '#22c55e',

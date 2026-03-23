@@ -14,9 +14,16 @@ import { CommandCenterTiles } from '@/components/CommandCenterTiles';
 import { useMember } from '@/context/MemberContext';
 import { useTraffic } from '@/context/TrafficContext';
 import { supabase } from '@/lib/supabase';
+import { getBridgeBannerDisplay } from '@/lib/bridge-display';
 import { fetchBridgeStatus } from '@/lib/bridge-supabase';
+import {
+  fetchGlasgowEventsForBanner,
+  GLASGOW_FIXTURE_VENUE_ROWS,
+  GLASGOW_GIG_VENUE_ORDER,
+} from '@/lib/events-supabase';
 import { computeMotorwayStatuses } from '@/lib/traffic-status';
 import type { BridgeStatus } from '@/types/bridge';
+import type { GlasgowEventBannerRow, GlasgowVenueKey } from '@/types/events';
 import {
   FontSize,
   FontWeight,
@@ -29,6 +36,26 @@ import { CHAT_ROOM_VISIBLE } from '@/constants/features';
 
 const LIGHT_EDGE = 'rgba(255, 255, 255, 0.1)';
 const SMOKED_OVERLAY = 'rgba(255, 255, 255, 0.03)';
+
+/** Match `CommandCenterTiles` motorway alert tiles. */
+const MOTORWAY_TILE_BG = 'rgba(40, 80, 200, 0.22)';
+const MOTORWAY_TILE_BORDER = 'rgba(140, 180, 255, 0.7)';
+
+/** Same as bridge closure / planned closure warning copy (`styles.bridgeWarning`). */
+const BRIDGE_ALERT_AMBER = 'rgba(255, 220, 150, 0.95)';
+
+const GIG_VENUE_SHORT_LABEL = {
+  ovo_hydro: 'HYDRO',
+  swg3: 'SWG3',
+  barrowlands: 'BARRAS',
+  o2_academy_glasgow: 'THE O2',
+} as const satisfies Record<(typeof GLASGOW_GIG_VENUE_ORDER)[number], string>;
+
+function truncateGigEventTitle(text: string, maxChars = 14): string {
+  const t = text.trim();
+  if (t.length <= maxChars) return t;
+  return `${t.slice(0, maxChars)}…`;
+}
 
 type MenuIconName =
   | 'newspaper.fill'
@@ -116,7 +143,13 @@ export default function HomeScreen() {
   const [bridge, setBridge] = useState<BridgeStatus | null>(null);
   const [bridgeError, setBridgeError] = useState<Error | null>(null);
   const [bridgeLoading, setBridgeLoading] = useState(true);
+  /** Recompute open/closed vs scheduled windows without waiting for navigation (see getBridgeBannerDisplay). */
+  const [bridgeClockTick, setBridgeClockTick] = useState(0);
   const [membershipModalVisible, setMembershipModalVisible] = useState(false);
+
+  const [eventsRows, setEventsRows] = useState<GlasgowEventBannerRow[]>([]);
+  const [eventsError, setEventsError] = useState<Error | null>(null);
+  const [eventsLoading, setEventsLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -133,17 +166,161 @@ export default function HomeScreen() {
     };
   }, []);
 
-  const bridgeUi = useMemo(() => {
-    if (!bridge || bridgeError) return { label: 'Status unavailable', kind: 'unknown' as const };
-    if (bridge.status === 'open') return { label: 'OPEN', kind: 'open' as const };
-    if (bridge.status === 'closed') return { label: 'CLOSED', kind: 'closed' as const };
-    return { label: 'Status unavailable', kind: 'unknown' as const };
-  }, [bridge, bridgeError]);
+  useEffect(() => {
+    const id = setInterval(() => setBridgeClockTick((n) => n + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setEventsLoading(true);
+      setEventsError(null);
+      const { rows, error } = await fetchGlasgowEventsForBanner(supabase);
+      if (cancelled) return;
+      setEventsRows(rows);
+      setEventsError(error);
+      setEventsLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const bridgeBanner = useMemo(() => {
+    if (bridgeLoading) {
+      return { pillKind: 'unknown' as const, pillLabel: 'CHECKING…', warning: null };
+    }
+    return getBridgeBannerDisplay(bridge, !!bridgeError);
+  }, [bridge, bridgeError, bridgeLoading, bridgeClockTick]);
 
   const motorwayStatuses = useMemo(
     () => computeMotorwayStatuses(situations),
     [situations]
   );
+
+  const eventsByVenueKey = useMemo(() => {
+    const map = new Map<GlasgowVenueKey, GlasgowEventBannerRow>();
+    for (const row of eventsRows) map.set(row.venueKey, row);
+    return map;
+  }, [eventsRows]);
+
+  /** Sport + Ticketmaster tiles: date and time separated by a hyphen. */
+  const formatFixtureDateTime = (startTime: string | null): string => {
+    if (!startTime) return 'TBC';
+    const d = new Date(startTime);
+    if (!Number.isFinite(d.getTime())) return 'TBC';
+    const date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    return `${date} - ${time}`;
+  };
+
+  const getFixtureTeams = (
+    ev: GlasgowEventBannerRow | undefined,
+    titleLine: string
+  ): { home: string; away: string } | null => {
+    if (!ev) return null;
+    const h = ev.homeTeam?.trim();
+    const a = ev.awayTeam?.trim();
+    if (h && a) return { home: h, away: a };
+    const parts = titleLine.split(/\s+vs\.?\s+/i);
+    if (parts.length === 2 && parts[0].trim() && parts[1].trim()) {
+      return { home: parts[0].trim(), away: parts[1].trim() };
+    }
+    return null;
+  };
+
+  const venueLabels: Record<GlasgowVenueKey, string> = {
+    ovo_hydro: 'OVO Hydro',
+    swg3: 'SWG3',
+    barrowlands: 'Barrowlands',
+    o2_academy_glasgow: 'O2 Academy',
+    celtic_park: 'Parkhead',
+    ibrox: 'Ibrox',
+    partick_thistle: 'Firhill',
+    hampden: 'Hampden',
+  };
+
+  const renderEventCell = (venueKey: GlasgowVenueKey, layout: 'gig' | 'fixture') => {
+    const ev = eventsByVenueKey.get(venueKey);
+    const title = eventsLoading
+      ? 'CHECKING…'
+      : eventsError
+        ? 'Events unavailable'
+        : ev?.title ?? 'No upcoming events';
+
+    const isGig = layout === 'gig';
+
+    if (isGig) {
+      const gigWhen = eventsLoading
+        ? '...'
+        : eventsError
+          ? '—'
+          : formatFixtureDateTime(ev?.startTime ?? null);
+      const gigTitleLine = truncateGigEventTitle(title);
+
+      return (
+        <View key={venueKey} style={[styles.eventCell, styles.eventCellGig]}>
+          <View style={styles.eventCellGigTop}>
+            <ThemedText style={styles.eventCellGigVenue} numberOfLines={1}>
+              {GIG_VENUE_SHORT_LABEL[venueKey as keyof typeof GIG_VENUE_SHORT_LABEL]}
+            </ThemedText>
+          </View>
+          <View style={styles.eventCellGigMiddle}>
+            <ThemedText style={styles.eventCellGigTitle} numberOfLines={1}>
+              {gigTitleLine}
+            </ThemedText>
+          </View>
+          <View style={styles.eventCellGigBottom}>
+            <ThemedText style={styles.eventCellGigWhen} numberOfLines={1}>
+              {gigWhen}
+            </ThemedText>
+          </View>
+        </View>
+      );
+    }
+
+    const fixtureWhen = eventsLoading
+      ? '...'
+      : eventsError
+        ? '—'
+        : formatFixtureDateTime(ev?.startTime ?? null);
+    const teams = getFixtureTeams(ev, title);
+
+    return (
+      <View key={venueKey} style={[styles.eventCell, styles.eventCellFixture]}>
+        <View style={styles.eventCellFixtureTop}>
+          <ThemedText style={styles.eventCellFixtureStadium} numberOfLines={2}>
+            {venueLabels[venueKey]}
+          </ThemedText>
+        </View>
+
+        <View style={styles.eventCellFixtureMiddle}>
+          {teams ? (
+            <View style={styles.eventCellFixtureMatchCol}>
+              <ThemedText style={styles.eventCellFixtureTeam} numberOfLines={2}>
+                {teams.home}
+              </ThemedText>
+              <ThemedText style={styles.eventCellFixtureVs}>vs</ThemedText>
+              <ThemedText style={styles.eventCellFixtureTeam} numberOfLines={2}>
+                {teams.away}
+              </ThemedText>
+            </View>
+          ) : (
+            <ThemedText style={styles.eventCellFixtureTitleFallback} numberOfLines={3}>
+              {title}
+            </ThemedText>
+          )}
+        </View>
+
+        <View style={styles.eventCellFixtureBottom}>
+          <ThemedText style={styles.eventCellFixtureWhen} numberOfLines={2}>
+            {fixtureWhen}
+          </ThemedText>
+        </View>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.screen}>
@@ -211,24 +388,65 @@ export default function HomeScreen() {
               <View
                 style={[
                   styles.bridgePill,
-                  bridgeUi.kind === 'open' && styles.bridgePillOpen,
-                  bridgeUi.kind === 'closed' && styles.bridgePillClosed,
+                  bridgeBanner.pillKind === 'open' && styles.bridgePillOpen,
+                  bridgeBanner.pillKind === 'closed' && styles.bridgePillClosed,
                 ]}
               >
                 <ThemedText
                   style={[
                     styles.bridgePillText,
-                    bridgeUi.kind === 'open' && styles.bridgePillTextOpen,
-                    bridgeUi.kind === 'closed' && styles.bridgePillTextClosed,
+                    bridgeBanner.pillKind === 'open' && styles.bridgePillTextOpen,
+                    bridgeBanner.pillKind === 'closed' && styles.bridgePillTextClosed,
                   ]}
                 >
-                  {bridgeLoading ? 'CHECKING…' : bridgeUi.label}
+                  {bridgeBanner.pillLabel}
                 </ThemedText>
               </View>
             </View>
+            {bridgeBanner.warning?.kind === 'planned' ? (
+              <ThemedText style={styles.bridgeWarning}>
+                <ThemedText style={styles.bridgeWarningBold}>CLOSURE ALERT: </ThemedText>
+                <ThemedText style={styles.bridgeWarningLine1Rest}>
+                  {bridgeBanner.warning.line1Rest}
+                </ThemedText>
+                {'\n'}
+                <ThemedText style={styles.bridgeWarningItalic}>Times are approximate</ThemedText>
+              </ThemedText>
+            ) : bridgeBanner.warning?.kind === 'in_progress' ? (
+              <ThemedText style={styles.bridgeWarning}>{bridgeBanner.warning.text}</ThemedText>
+            ) : null}
           </View>
 
           <CommandCenterTiles items={motorwayStatuses} />
+        </GlassCard>
+
+        <GlassCard
+          elevated
+          borderRadius={Radius.lg}
+          borderColor={LIGHT_EDGE}
+          contentStyle={styles.eventsCardContent}
+          sleek
+          style={styles.eventsCard}
+        >
+          <View style={styles.alertsHeaderRow}>
+            <View style={styles.alertsHeaderLine} />
+            <ThemedText style={styles.alertsHeaderText}>Upcoming Events</ThemedText>
+            <View style={styles.alertsHeaderLine} />
+          </View>
+
+          <View style={styles.eventsTilesStack}>
+            <View style={styles.eventsGigRow}>
+              {GLASGOW_GIG_VENUE_ORDER.map((venueKey) => renderEventCell(venueKey, 'gig'))}
+            </View>
+
+            <View style={styles.eventsFixtureGrid}>
+              {GLASGOW_FIXTURE_VENUE_ROWS.map((rowKeys, rowIndex) => (
+                <View key={`fixture-row-${rowIndex}`} style={styles.eventsFixtureRow}>
+                  {rowKeys.map((venueKey) => renderEventCell(venueKey, 'fixture'))}
+                </View>
+              ))}
+            </View>
+          </View>
         </GlassCard>
 
         {/* Five menu boxes: each with header and icon grid */}
@@ -388,6 +606,31 @@ const styles = StyleSheet.create({
     color: NeoText.muted,
     marginTop: 2,
   },
+  bridgeWarning: {
+    marginTop: Spacing.sm,
+    fontSize: FontSize.sm + 1,
+    lineHeight: 22,
+    color: BRIDGE_ALERT_AMBER,
+    fontWeight: FontWeight.medium,
+    textAlign: 'center',
+    alignSelf: 'stretch',
+  },
+  bridgeWarningBold: {
+    fontWeight: FontWeight.bold,
+    color: BRIDGE_ALERT_AMBER,
+    fontSize: FontSize.sm + 1,
+  },
+  bridgeWarningLine1Rest: {
+    fontWeight: FontWeight.medium,
+    color: BRIDGE_ALERT_AMBER,
+    fontSize: FontSize.sm + 1,
+  },
+  bridgeWarningItalic: {
+    fontStyle: 'italic',
+    fontWeight: FontWeight.regular,
+    color: BRIDGE_ALERT_AMBER,
+    fontSize: FontSize.sm + 1,
+  },
   alertsHeaderRow: {
     marginTop: Spacing.xs,
     marginBottom: Spacing.sm,
@@ -524,5 +767,160 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -4,
     right: -3,
+  },
+  eventsCard: {
+    marginHorizontal: Spacing.md,
+    marginTop: Spacing.sm,
+  },
+  eventsCardContent: {
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  /** Single stack: 4 gig tiles + 2×2 fixtures under one “Upcoming Events” header. */
+  eventsTilesStack: {
+    gap: Spacing.sm,
+  },
+  eventsGigRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: Spacing.xs,
+  },
+  eventsFixtureGrid: {
+    gap: Spacing.xs,
+  },
+  eventsFixtureRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: Spacing.xs,
+  },
+  eventCell: {
+    flex: 1,
+    minWidth: 0,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: MOTORWAY_TILE_BORDER,
+    backgroundColor: MOTORWAY_TILE_BG,
+  },
+  /** Ticketmaster gig cells: venue top, title centre, date/time bottom (same shell as motorway tiles). */
+  eventCellGig: {
+    alignItems: 'stretch',
+    flex: 1,
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+  },
+  eventCellGigTop: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  eventCellGigMiddle: {
+    flex: 1,
+    width: '100%',
+    minHeight: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: Spacing.xs,
+  },
+  eventCellGigBottom: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  /** Same top-line treatment as fixture stadium names (`eventCellFixtureStadium`). */
+  eventCellGigVenue: {
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.semibold,
+    color: '#E5EDFF',
+    letterSpacing: 0.2,
+    marginBottom: Spacing.xs,
+    textAlign: 'center',
+    width: '100%',
+    textDecorationLine: 'underline',
+  },
+  eventCellGigTitle: {
+    fontSize: 10,
+    fontWeight: FontWeight.medium,
+    color: BRIDGE_ALERT_AMBER,
+    textAlign: 'center',
+    width: '100%',
+  },
+  eventCellGigWhen: {
+    marginTop: 2,
+    fontSize: 10,
+    fontWeight: FontWeight.medium,
+    color: NeoText.muted,
+    textAlign: 'center',
+    width: '100%',
+  },
+  /**
+   * Fixture cells: same visual weight as motorway CommandCenterTiles
+   * (code = stadium, status = teams, meta = date/time).
+   */
+  eventCellFixture: {
+    alignItems: 'stretch',
+    flex: 1,
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+  },
+  eventCellFixtureTop: {
+    width: '100%',
+  },
+  eventCellFixtureMiddle: {
+    flex: 1,
+    width: '100%',
+    minHeight: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: Spacing.xs,
+  },
+  eventCellFixtureBottom: {
+    width: '100%',
+  },
+  eventCellFixtureStadium: {
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.semibold,
+    color: '#E5EDFF',
+    letterSpacing: 0.2,
+    marginBottom: Spacing.xs,
+    textAlign: 'center',
+    width: '100%',
+    textDecorationLine: 'underline',
+    textTransform: 'uppercase',
+  },
+  eventCellFixtureMatchCol: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    gap: 2,
+  },
+  eventCellFixtureTeam: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
+    color: BRIDGE_ALERT_AMBER,
+    textAlign: 'center',
+    width: '100%',
+  },
+  eventCellFixtureVs: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
+    color: BRIDGE_ALERT_AMBER,
+    textAlign: 'center',
+    textTransform: 'lowercase',
+  },
+  eventCellFixtureTitleFallback: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
+    color: BRIDGE_ALERT_AMBER,
+    textAlign: 'center',
+    width: '100%',
+  },
+  eventCellFixtureWhen: {
+    marginTop: 2,
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.medium,
+    color: NeoText.muted,
+    textAlign: 'center',
+    width: '100%',
   },
 });
