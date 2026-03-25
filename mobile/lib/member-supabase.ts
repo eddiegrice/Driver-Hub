@@ -81,6 +81,29 @@ function profileToRow(profile: MemberProfile): Partial<MemberRow> {
  * Fetch the current user's member profile and status from Supabase.
  * Returns null if no row or error.
  */
+/**
+ * Read only `is_admin` for the current user (RLS: own row).
+ * Used to gate the admin UI without toggling global member loading state.
+ */
+export async function fetchMemberAdminFlag(
+  supabase: SupabaseClient | null,
+  userId: string
+): Promise<{ isAdmin: boolean; error: Error | null }> {
+  if (!supabase) {
+    return { isAdmin: false, error: null };
+  }
+  const { data, error } = await supabase
+    .from('members')
+    .select('is_admin')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error) {
+    return { isAdmin: false, error };
+  }
+  return { isAdmin: Boolean(data?.is_admin), error: null };
+}
+
 export async function getMemberWithStatus(
   supabase: SupabaseClient,
   userId: string

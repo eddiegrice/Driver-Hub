@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { CmsPostTile } from '@/components/CmsPostTile';
+import { AssociationDashboardBackLink } from '@/components/AssociationDashboardBackLink';
 import { AssociationMembershipGate } from '@/components/AssociationMembershipGate';
 import { TabScreenHeader } from '@/components/TabScreenHeader';
 import { ThemedText } from '@/components/themed-text';
@@ -34,6 +35,7 @@ function LibraryListInner() {
   if (isLoading) {
     return (
       <View style={styles.screen}>
+        <AssociationDashboardBackLink />
         <TabScreenHeader title="Library" />
         <ThemedView style={styles.centered}>
           <ThemedText>Loading…</ThemedText>
@@ -44,6 +46,7 @@ function LibraryListInner() {
 
   return (
     <View style={styles.screen}>
+      <AssociationDashboardBackLink />
       <TabScreenHeader title="Library" />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <ThemedView style={styles.container}>

@@ -2,12 +2,17 @@ import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { CmsPostTile } from '@/components/CmsPostTile';
+import { AssociationDashboardBackLink } from '@/components/AssociationDashboardBackLink';
 import { AssociationMembershipGate } from '@/components/AssociationMembershipGate';
 import { TabScreenHeader } from '@/components/TabScreenHeader';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useNews } from '@/context/NewsContext';
 import { FontSize, NeoText, Spacing } from '@/constants/theme';
+
+const HELPER_TEXT =
+  'Trade and licensing news from the club. Tap a post to read more.';
+const EMPTY_LABEL = 'No news posts yet.';
 
 function NewsListInner() {
   const router = useRouter();
@@ -16,6 +21,7 @@ function NewsListInner() {
   if (isLoading) {
     return (
       <View style={styles.screen}>
+        <AssociationDashboardBackLink />
         <TabScreenHeader title="News" />
         <ThemedView style={styles.centered}>
           <ThemedText>Loading…</ThemedText>
@@ -26,17 +32,16 @@ function NewsListInner() {
 
   return (
     <View style={styles.screen}>
+      <AssociationDashboardBackLink />
       <TabScreenHeader title="News" />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <ThemedView style={styles.container}>
-          <ThemedText style={styles.helperText}>
-            Trade and licensing news from the club. Tap a post to read more.
-          </ThemedText>
+          <ThemedText style={styles.helperText}>{HELPER_TEXT}</ThemedText>
 
           {error ? (
             <ThemedText style={styles.errorText}>{error.message}</ThemedText>
           ) : posts.length === 0 ? (
-            <ThemedText style={styles.empty}>No posts yet.</ThemedText>
+            <ThemedText style={styles.empty}>{EMPTY_LABEL}</ThemedText>
           ) : (
             <ThemedView style={styles.list}>
               {posts.map((post) => (
@@ -80,7 +85,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   container: {
-    gap: Spacing.xl,
+    gap: Spacing.lg,
   },
   helperText: {
     color: NeoText.secondary,

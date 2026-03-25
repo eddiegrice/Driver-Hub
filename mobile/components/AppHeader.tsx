@@ -1,13 +1,13 @@
 /**
- * Global app header: logo + PHD Matrix (left), Home button (right).
- * Shown at the top of every page.
+ * Global app header: logo + PHD Matrix (left); Admin link (right) for admins only.
  */
+import type { Href } from 'expo-router';
 import { useRouter, usePathname } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useMember } from '@/context/MemberContext';
 import {
   FontSize,
   FontWeight,
@@ -21,6 +21,7 @@ export function AppHeader() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const pathname = usePathname();
+  const { memberStatus, isLoading: memberLoading } = useMember();
   const isHome =
     pathname === '/' ||
     pathname === '/(tabs)' ||
@@ -30,8 +31,10 @@ export function AppHeader() {
 
   const goHome = () => {
     if (isHome) return;
-    router.push('/');
+    router.replace('/');
   };
+
+  const showAdminLink = !memberLoading && memberStatus.isAdmin;
 
   return (
     <View style={[styles.wrap, { paddingTop: insets.top + Spacing.md, paddingBottom: Spacing.md }]}>
@@ -47,15 +50,18 @@ export function AppHeader() {
           <ThemedText style={styles.titleMatrix}>MATRIX</ThemedText>
         </View>
       </Pressable>
-      <Pressable
-        onPress={goHome}
-        style={({ pressed }) => [styles.homeBtn, pressed && styles.homeBtnPressed]}
-        accessibilityRole="button"
-        accessibilityLabel="Go to home"
-      >
-        <IconSymbol name="house.fill" size={24} color={NeoText.primary} />
-        <ThemedText style={styles.homeLabel}>Home</ThemedText>
-      </Pressable>
+      <View style={styles.rightSlot}>
+        {showAdminLink ? (
+          <Pressable
+            onPress={() => router.push('/admin' as Href)}
+            style={({ pressed }) => [styles.adminPill, pressed && styles.adminPillPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Open admin panel"
+          >
+            <ThemedText style={styles.adminPillLabel}>Admin Panel</ThemedText>
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -66,6 +72,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.xl,
+    gap: Spacing.md,
+  },
+  rightSlot: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  adminPill: {
+    paddingVertical: 10,
+    paddingHorizontal: Spacing.md,
+    borderRadius: 999,
+    backgroundColor: HERO_LOGO_CYAN,
+    minHeight: 40,
+    justifyContent: 'center',
+  },
+  adminPillPressed: {
+    opacity: 0.88,
+  },
+  adminPillLabel: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.bold,
+    color: '#000000',
   },
   left: {
     flexDirection: 'row',
@@ -100,21 +127,5 @@ const styles = StyleSheet.create({
     color: NeoText.primary,
     letterSpacing: 2,
     textTransform: 'uppercase',
-  },
-  homeBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-  },
-  homeBtnPressed: {
-    opacity: 0.8,
-  },
-  homeLabel: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
-    color: NeoText.primary,
   },
 });

@@ -37,7 +37,7 @@ export function GlassCard({ children, elevated, gradientBorder, borderRadius, bo
     return (
       <View style={[styles.gradientBorderWrap, style]}>
         <LinearGradient
-          colors={MembershipCardBorderGradient as unknown as string[]}
+          colors={MembershipCardBorderGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[styles.gradientBorder, { borderRadius: cardBorderRadius + borderWidth }]}

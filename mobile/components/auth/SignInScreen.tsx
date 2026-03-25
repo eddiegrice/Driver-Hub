@@ -99,7 +99,7 @@ export function SignInScreen() {
           editable={status !== 'sending' && status !== 'verifying'}
         />
 
-        {status === 'sent' && (
+        {(status === 'sent' || status === 'verifying') && (
           <>
             <ThemedText style={[styles.message, { color: successColor }]}>
               Check your email for the code and enter it below.

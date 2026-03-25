@@ -98,6 +98,9 @@ function NewCaseworkInner() {
   return (
     <ParallaxScrollView headerBackgroundColor={{ light: '#F8FAFC', dark: '#0F172A' }} headerImage={null}>
       <ThemedView style={styles.container}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backRow}>
+          <ThemedText type="link">← Back to list</ThemedText>
+        </TouchableOpacity>
         <ThemedText type="title">New request</ThemedText>
         <ThemedText style={styles.helperText}>
           Your profile details will be sent with this request so we can help you quickly.
@@ -178,6 +181,9 @@ export default function NewCaseworkScreen() {
 const styles = StyleSheet.create({
   container: {
     gap: 16,
+  },
+  backRow: {
+    marginBottom: 4,
   },
   helperText: {
     opacity: 0.8,

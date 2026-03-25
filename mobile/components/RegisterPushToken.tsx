@@ -14,10 +14,13 @@ export function RegisterPushToken() {
   const isExpoGo = Constants.appOwnership === 'expo';
 
   useEffect(() => {
-    if (isExpoGo || !isSupabaseConfigured || !supabase || !session?.user?.id || done.current) return;
+    if (isExpoGo || !isSupabaseConfigured || !session?.user?.id || done.current) return;
+    const client = supabase;
+    if (!client) return;
     done.current = true;
+    const userId = session.user.id;
     import('@/lib/push-device-supabase').then(({ registerPushDevice }) =>
-      registerPushDevice(supabase, session.user.id!)
+      registerPushDevice(client, userId)
     );
   }, [isExpoGo, session?.user?.id]);
 

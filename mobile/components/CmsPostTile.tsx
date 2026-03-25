@@ -1,5 +1,5 @@
 /**
- * Shared article tile for News, Campaigns, Library list screens.
+ * Shared article tile for News and Library list screens.
  * Glass style to match home menu; shows title, date, snippet, optional thumbnail.
  */
 import { Image } from 'expo-image';

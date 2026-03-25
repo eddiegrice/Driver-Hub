@@ -1,12 +1,11 @@
 // Fallback for using MaterialIcons on Android and web.
 
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { SymbolWeight, SymbolViewProps } from 'expo-symbols';
+import { SymbolWeight } from 'expo-symbols';
 import { ComponentProps } from 'react';
 import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
 
-type IconMapping = Record<SymbolViewProps['name'], ComponentProps<typeof MaterialIcons>['name']>;
-type IconSymbolName = keyof typeof MAPPING;
+type MaterialIconName = ComponentProps<typeof MaterialIcons>['name'];
 
 /**
  * Add your SF Symbols to Material Icons mappings here.
@@ -37,7 +36,6 @@ const MAPPING = {
   'poll': 'poll',
   'gavel.fill': 'gavel',
   'book.closed.fill': 'menu-book',
-  'megaphone.fill': 'campaign',
   'music.note': 'library-music',
   'soccerball': 'sports-soccer',
   'exclamationmark.triangle.fill': 'warning',
@@ -46,9 +44,14 @@ const MAPPING = {
   'clock.fill': 'schedule',
   'chart.line.uptrend.xyaxis': 'show-chart',
   'signpost.left.fill': 'signpost',
+  'map.fill': 'map',
+  'person.3.fill': 'groups',
+  'sparkles': 'auto-awesome',
   // Premium indicator overlay
   'star.fill': 'star',
-} as IconMapping;
+} as const satisfies Record<string, MaterialIconName>;
+
+export type IconSymbolName = keyof typeof MAPPING;
 
 /**
  * An icon component that uses native SF Symbols on iOS, and Material Icons on Android and web.
@@ -67,5 +70,7 @@ export function IconSymbol({
   style?: StyleProp<TextStyle>;
   weight?: SymbolWeight;
 }) {
-  return <MaterialIcons color={color} size={size} name={MAPPING[name]} style={style} />;
+  return (
+    <MaterialIcons color={color} size={size} name={MAPPING[name] as MaterialIconName} style={style} />
+  );
 }

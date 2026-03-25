@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
+import { AssociationDashboardBackLink } from '@/components/AssociationDashboardBackLink';
 import { TabScreenHeader } from '@/components/TabScreenHeader';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -19,6 +20,7 @@ function CaseworkListInner() {
   if (isLoading) {
     return (
       <View style={styles.screen}>
+        <AssociationDashboardBackLink />
         <TabScreenHeader title="Casework" />
         <ThemedView style={styles.centered}>
           <ThemedText>Loading…</ThemedText>
@@ -29,6 +31,7 @@ function CaseworkListInner() {
 
   return (
     <View style={styles.screen}>
+      <AssociationDashboardBackLink />
       <TabScreenHeader title="Casework" />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <ThemedView style={styles.container}>

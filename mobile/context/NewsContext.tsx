@@ -5,6 +5,7 @@ import { fetchCmsPosts } from '@/lib/cms-supabase';
 import type { CmsPost } from '@/types/cms';
 
 type NewsContextValue = {
+  /** Posts with `type === 'news'` (club news articles). */
   posts: CmsPost[];
   isLoading: boolean;
   error: Error | null;
@@ -22,9 +23,9 @@ export function NewsProvider({ children }: { children: React.ReactNode }) {
   const refreshPosts = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    const { posts: list, error: err } = await fetchCmsPosts(supabase, 'news');
-    setPosts(list);
-    setError(err);
+    const newsRes = await fetchCmsPosts(supabase, 'news');
+    setPosts(newsRes.posts);
+    setError(newsRes.error);
     setIsLoading(false);
   }, []);
 
@@ -32,10 +33,7 @@ export function NewsProvider({ children }: { children: React.ReactNode }) {
     refreshPosts();
   }, [refreshPosts]);
 
-  const getPost = useCallback(
-    (id: string) => posts.find((p) => p.id === id),
-    [posts]
-  );
+  const getPost = useCallback((id: string) => posts.find((p) => p.id === id), [posts]);
 
   const value: NewsContextValue = {
     posts,

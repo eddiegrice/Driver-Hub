@@ -15,7 +15,7 @@ import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { MemberProvider, useMember } from '@/context/MemberContext';
 import { NewsProvider } from '@/context/NewsContext';
 import { PollsProvider } from '@/context/PollsContext';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { appStackScreenOptions } from '@/constants/navigation';
 
 // Fixed dark theme with transparent background so the gradient portal shows through everywhere.
 const AppTheme = {
@@ -34,7 +34,7 @@ function TabsAndStack() {
         <PollsProvider>
           <TrafficProvider>
             <ChatProvider>
-              <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }}>
+              <Stack screenOptions={appStackScreenOptions}>
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
               </Stack>

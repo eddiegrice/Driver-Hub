@@ -154,7 +154,7 @@ function ChatBubble({
       <View style={[styles.bubble, { backgroundColor: isOwn ? 'transparent' : bubbleBg, borderColor: BUBBLE_BORDER }, isOwn && styles.bubbleOwn]}>
         {isOwn && (
           <LinearGradient
-            colors={BUBBLE_GRADIENT_OWN as unknown as string[]}
+            colors={BUBBLE_GRADIENT_OWN}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={[StyleSheet.absoluteFill, styles.bubbleGradient]}
@@ -234,6 +234,16 @@ export default function ChatScreen() {
   const isMod = useSupabase ? chat.isMod : false;
   const currentMemberId = useSupabase ? (session?.user?.id ?? '') : MOCK_CURRENT_MEMBER_ID;
   const displayName = member?.name?.trim() || 'You';
+
+  const getReactionsForMessage = useCallback(
+    (messageId: string): ReactionSummary[] => {
+      const r = reactions[messageId];
+      if (Array.isArray(r)) return r;
+      if (r && typeof r === 'object' && 'emoji' in r) return [r as ReactionSummary];
+      return [];
+    },
+    [reactions]
+  );
 
   const handleSend = useCallback(async () => {
     const trimmed = inputText.trim();
@@ -401,16 +411,6 @@ export default function ChatScreen() {
       hideSub.remove();
     };
   }, []);
-
-  const getReactionsForMessage = useCallback(
-    (messageId: string): ReactionSummary[] => {
-      const r = reactions[messageId];
-      if (Array.isArray(r)) return r;
-      if (r && typeof r === 'object' && 'emoji' in r) return [r as ReactionSummary];
-      return [];
-    },
-    [reactions]
-  );
 
   const handleSwipeReply = useCallback((item: ChatMessage) => {
     Object.entries(swipeableRefs.current).forEach(([, ref]) => ref?.close());

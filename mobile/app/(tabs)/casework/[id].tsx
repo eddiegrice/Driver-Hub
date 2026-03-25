@@ -28,7 +28,7 @@ function CaseworkDetailInner() {
 
   const colorScheme = useColorScheme();
   const textColor = useThemeColor({}, 'text');
-  const borderColor = useThemeColor({}, 'icon');
+  const borderColor = useThemeColor({}, 'border');
   const backgroundColor = useThemeColor({}, 'background');
   const buttonBg = useThemeColor({}, 'tint');
   const buttonTextColor = colorScheme === 'dark' ? '#111' : '#fff';

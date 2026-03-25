@@ -1,6 +1,6 @@
 /**
  * Shared full-article content: title, meta, body with clickable URLs.
- * Used by News, Campaigns, and Library detail screens.
+ * Used by News and Library detail screens.
  */
 import { Linking, StyleSheet, View } from 'react-native';
 

@@ -1,13 +1,16 @@
 import { ScrollView, StyleSheet, View } from 'react-native';
 
+import { AssociationDashboardBackLink } from '@/components/AssociationDashboardBackLink';
+import { AssociationMembershipGate } from '@/components/AssociationMembershipGate';
 import { TabScreenHeader } from '@/components/TabScreenHeader';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 
-export default function MemberECardScreen() {
+function MemberECardInner() {
   return (
     <View style={styles.screen}>
+      <AssociationDashboardBackLink />
       <TabScreenHeader title="Member E-Card" />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <ThemedView style={styles.container}>
@@ -17,6 +20,14 @@ export default function MemberECardScreen() {
         </ThemedView>
       </ScrollView>
     </View>
+  );
+}
+
+export default function MemberECardScreen() {
+  return (
+    <AssociationMembershipGate title="Member E-Card">
+      <MemberECardInner />
+    </AssociationMembershipGate>
   );
 }
 

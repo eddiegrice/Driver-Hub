@@ -1,40 +1,61 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity } from 'react-native';
 
 import { ArticleDetailContent } from '@/components/ArticleDetailContent';
+import { AssociationMembershipGate } from '@/components/AssociationMembershipGate';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useNews } from '@/context/NewsContext';
-import { AssociationMembershipGate } from '@/components/AssociationMembershipGate';
 import { fetchCmsPostById } from '@/lib/cms-supabase';
 import { supabase } from '@/lib/supabase';
 import type { CmsPost } from '@/types/cms';
 
-function NewsDetailInner() {
+function NewsDetailContent({ post }: { post: CmsPost }) {
+  const router = useRouter();
+  return (
+    <ParallaxScrollView headerBackgroundColor={{ light: '#f4f4f4', dark: '#121212' }} headerImage={null}>
+      <ThemedView style={styles.container}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backRow}>
+          <ThemedText type="link">← Back</ThemedText>
+        </TouchableOpacity>
+        <ArticleDetailContent post={post} />
+      </ThemedView>
+    </ParallaxScrollView>
+  );
+}
+
+/**
+ * Loads post first (RLS); front-page announcements skip premium gate so all signed-in users can read.
+ */
+function NewsDetailCoordinator() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { getPost } = useNews();
-  const fromList = id ? getPost(id) : undefined;
-  const [fetchedPost, setFetchedPost] = useState<CmsPost | null>(null);
-  const [loadingId, setLoadingId] = useState(false);
+  const [post, setPost] = useState<CmsPost | null | undefined>(undefined);
 
   useEffect(() => {
-    if (!id || fromList) return;
+    if (!id) {
+      setPost(null);
+      return;
+    }
+    const cached = getPost(id);
+    if (cached) {
+      setPost(cached);
+      return;
+    }
     let cancelled = false;
     (async () => {
-      setLoadingId(true);
-      const { post } = await fetchCmsPostById(supabase, id);
+      const { post: p } = await fetchCmsPostById(supabase, id);
       if (!cancelled) {
-        setFetchedPost(post ?? null);
-        setLoadingId(false);
+        setPost(p ?? null);
       }
     })();
-    return () => { cancelled = true; };
-  }, [id, fromList]);
-
-  const post = fromList ?? fetchedPost ?? undefined;
+    return () => {
+      cancelled = true;
+    };
+  }, [id, getPost]);
 
   if (!id) {
     return (
@@ -49,7 +70,7 @@ function NewsDetailInner() {
     );
   }
 
-  if (loadingId) {
+  if (post === undefined) {
     return (
       <ParallaxScrollView headerBackgroundColor={{ light: '#f4f4f4', dark: '#121212' }} headerImage={null}>
         <ThemedView style={styles.container}>
@@ -72,24 +93,22 @@ function NewsDetailInner() {
     );
   }
 
+  const isOpenToAllMembers =
+    post.type === 'news' && post.isFrontPageAnnouncement;
+
+  if (isOpenToAllMembers) {
+    return <NewsDetailContent post={post} />;
+  }
+
   return (
-    <ParallaxScrollView headerBackgroundColor={{ light: '#f4f4f4', dark: '#121212' }} headerImage={null}>
-      <ThemedView style={styles.container}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backRow}>
-          <ThemedText type="link">← Back to news</ThemedText>
-        </TouchableOpacity>
-        <ArticleDetailContent post={post} />
-      </ThemedView>
-    </ParallaxScrollView>
+    <AssociationMembershipGate title="News">
+      <NewsDetailContent post={post} />
+    </AssociationMembershipGate>
   );
 }
 
 export default function NewsDetailScreen() {
-  return (
-    <AssociationMembershipGate title="News">
-      <NewsDetailInner />
-    </AssociationMembershipGate>
-  );
+  return <NewsDetailCoordinator />;
 }
 
 const styles = StyleSheet.create({

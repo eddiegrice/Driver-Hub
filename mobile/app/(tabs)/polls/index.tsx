@@ -6,6 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Card } from '@/components/ui/Card';
 import { usePolls } from '@/context/PollsContext';
+import { AssociationDashboardBackLink } from '@/components/AssociationDashboardBackLink';
 import { AssociationMembershipGate } from '@/components/AssociationMembershipGate';
 import { FontSize, Spacing } from '@/constants/theme';
 import { formatDateForDisplay } from '@/types/member';
@@ -17,6 +18,7 @@ function PollsListInner() {
   if (isLoading) {
     return (
       <View style={styles.screen}>
+        <AssociationDashboardBackLink />
         <TabScreenHeader title="Polls" />
         <ThemedView style={styles.centered}>
           <ThemedText>Loading…</ThemedText>
@@ -27,6 +29,7 @@ function PollsListInner() {
 
   return (
     <View style={styles.screen}>
+      <AssociationDashboardBackLink />
       <TabScreenHeader title="Polls" />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <ThemedView style={styles.container}>

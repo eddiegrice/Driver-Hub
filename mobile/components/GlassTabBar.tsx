@@ -61,7 +61,7 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
               {isFocused && (
                 <View style={styles.glowWrap}>
                   <LinearGradient
-                    colors={[NeoAccent.purple[0], NeoAccent.purple[1]] as unknown as string[]}
+                    colors={NeoAccent.purple}
                     start={{ x: 0.5, y: 0 }}
                     end={{ x: 0.5, y: 1 }}
                     style={styles.glow}

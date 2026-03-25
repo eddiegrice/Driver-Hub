@@ -37,7 +37,7 @@ function PollDetailInner() {
   const cardBg = useThemeColor({ light: 'rgba(0,0,0,0.05)', dark: 'rgba(255,255,255,0.06)' }, 'background');
   const buttonTextColor = colorScheme === 'dark' ? '#111' : '#fff';
   const textColor = useThemeColor({}, 'text');
-  const borderColor = useThemeColor({}, 'icon');
+  const borderColor = useThemeColor({}, 'border');
   const backgroundColor = useThemeColor({}, 'background');
 
   const closed = poll ? isPollClosed(poll) : false;
@@ -316,6 +316,9 @@ const styles = StyleSheet.create({
   questionBlock: {
     gap: 10,
     marginTop: 8,
+  },
+  options: {
+    gap: 10,
   },
   optionRow: {
     flexDirection: 'row',

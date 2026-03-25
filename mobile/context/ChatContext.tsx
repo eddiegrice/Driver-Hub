@@ -123,7 +123,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase || !userId) return;
 
-    const channel = supabase
+    const client = supabase;
+    const channel = client
       .channel(`chat:${ROOM_ID_MAIN}`)
       .on(
         'postgres_changes',
@@ -197,7 +198,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      client.removeChannel(channel);
     };
   }, [userId]);
 
