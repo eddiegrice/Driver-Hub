@@ -6,12 +6,12 @@ import { TabScreenHeader } from '@/components/TabScreenHeader';
 import { ThemedText } from '@/components/themed-text';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useTraffic } from '@/context/TrafficContext';
-import { FontSize, NeoText, Radius, Spacing } from '@/constants/theme';
+import { FontSize, NeoGlass, NeoText, Radius, Spacing } from '@/constants/theme';
 import type { TrafficSituation } from '@/types/traffic';
 import type { MotorwayCode } from '@/lib/traffic-status';
 import { formatDateForDisplay } from '@/types/member';
 
-const LIGHT_EDGE = 'rgba(255, 255, 255, 0.1)';
+const LIGHT_EDGE = NeoGlass.cardBorder;
 
 function isActiveSituation(s: TrafficSituation, now: Date): boolean {
   const startOk =

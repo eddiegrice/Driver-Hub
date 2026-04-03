@@ -23,6 +23,7 @@ const MAPPING = {
   'person.crop.rectangle': 'badge',
   'person.crop.circle': 'person',
   'doc.text.magnifyingglass': 'description',
+  'briefcase.fill': 'work',
   'newspaper.fill': 'article',
   'checklist': 'checklist',
   'square.grid.2x2': 'apps',

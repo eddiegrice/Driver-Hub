@@ -7,7 +7,7 @@ import type { BridgeBannerDisplay } from '@/lib/bridge-display';
 import type { MotorwayStatus } from '@/lib/traffic-status';
 import { FontSize, FontWeight, NeoGlass, Radius, Spacing } from '@/constants/theme';
 
-const LIGHT_EDGE = 'rgba(255, 255, 255, 0.1)';
+const LIGHT_EDGE = NeoGlass.cardBorder;
 const BRIDGE_ALERT_AMBER = 'rgba(255, 220, 150, 0.95)';
 
 type Props = {
@@ -27,7 +27,7 @@ export function GlasgowRoadsAlertsCard({ bridgeBanner, motorwayStatuses }: Props
     >
       <View style={styles.alertsHeaderRow}>
         <View style={styles.alertsHeaderLine} />
-        <ThemedText style={styles.alertsHeaderText}>Glasgow Roads Alerts</ThemedText>
+        <ThemedText style={styles.alertsHeaderText}>Glasgow Trunk Road Alerts</ThemedText>
         <View style={styles.alertsHeaderLine} />
       </View>
 

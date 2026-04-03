@@ -6,7 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { FontSize, FontWeight, NeoGlass, NeoText, Radius, Spacing } from '@/constants/theme';
 
-const LIGHT_EDGE = 'rgba(255, 255, 255, 0.1)';
+const LIGHT_EDGE = NeoGlass.cardBorder;
 const CYAN = '#00CCFF';
 
 type Segment = 'basic' | 'association' | 'lapsed' | 'cancelled';

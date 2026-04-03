@@ -10,7 +10,7 @@ import { fetchTrafficVms } from '@/lib/traffic-supabase';
 import { FontSize, NeoGlass, NeoText, Radius, Spacing } from '@/constants/theme';
 import type { TrafficVms } from '@/types/traffic';
 
-const LIGHT_EDGE = 'rgba(255, 255, 255, 0.1)';
+const LIGHT_EDGE = NeoGlass.cardBorder;
 
 function formatTimeLastSet(iso: string | null): string {
   if (!iso) return '—';

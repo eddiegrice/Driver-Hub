@@ -1,22 +1,24 @@
 /**
- * Casework (helpdesk) tickets and messages. Stored on device for now; later synced with backend.
+ * Casework types — backed by Supabase (see docs/casework-schema.sql).
  */
 import type { MemberProfile } from './member';
 
 export const CASEWORK_STATUSES = [
-  'sent_pending',
-  'being_reviewed',
-  'being_actioned',
-  'resolved',
-  'closed',
+  'case_open',
+  'investigating',
+  'actioning',
+  'closed_no_resolution',
+  'closed_resolved',
 ] as const;
 export type CaseworkStatus = (typeof CASEWORK_STATUSES)[number];
 
 export const CASEWORK_TYPES = [
-  'Badge / licence query',
-  'Vehicle / plate query',
-  'Compliance or suspension',
-  'Other',
+  'PHDL (Badge) Issue',
+  'PHCL (Plate) Issue',
+  'Medical Related',
+  'Cars and Inspections',
+  'Hearings and Enforcement',
+  'Something Else',
 ] as const;
 export type CaseworkType = (typeof CASEWORK_TYPES)[number];
 
@@ -25,37 +27,49 @@ export interface CaseworkAttachment {
   uri: string;
   name?: string;
   mimeType?: string;
+  storagePath?: string;
+  byteSize?: number;
 }
 
 export interface CaseworkMessage {
   id: string;
   ticketId: string;
-  /** 'member' | 'admin' - who sent it */
-  sender: string;
+  sender: 'member' | 'admin';
+  authorMemberId: string;
   text: string;
-  createdAt: string; // ISO
+  createdAt: string;
 }
 
 export interface CaseworkTicket {
   id: string;
-  /** Snapshot of member profile when ticket was created (for admin context) */
+  memberId: string | null;
   memberSnapshot: MemberProfile;
   type: CaseworkType;
   subject: string;
   status: CaseworkStatus;
-  createdAt: string; // ISO
+  createdAt: string;
   updatedAt: string;
   messages: CaseworkMessage[];
   attachments: CaseworkAttachment[];
+  closureRequested: boolean;
+  openedByAdmin: boolean;
+  assignedAdminId: string | null;
+  assignedAdminName?: string;
 }
 
 export function statusLabel(status: CaseworkStatus): string {
   const map: Record<CaseworkStatus, string> = {
-    sent_pending: 'Sent / Pending',
-    being_reviewed: 'Being reviewed',
-    being_actioned: 'Being actioned',
-    resolved: 'Resolved',
-    closed: 'Closed',
+    case_open: 'Case Open',
+    investigating: 'Investigating',
+    actioning: 'Actioning',
+    closed_no_resolution: 'Closed - No Resolution',
+    closed_resolved: 'Closed - Resolved',
   };
   return map[status] ?? status;
+}
+
+export const CLOSED_STATUSES: CaseworkStatus[] = ['closed_no_resolution', 'closed_resolved'];
+
+export function isClosedStatus(s: CaseworkStatus): boolean {
+  return CLOSED_STATUSES.includes(s);
 }

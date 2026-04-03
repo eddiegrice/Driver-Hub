@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { MembershipCard } from '@/components/MembershipCard';
 import { TabScreenHeader } from '@/components/TabScreenHeader';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { useAuth } from '@/context/AuthContext';
 import { useMember } from '@/context/MemberContext';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import { FontSize, Radius, Spacing } from '@/constants/theme';
 import type { MemberProfile } from '@/types/member';
 
@@ -45,10 +47,23 @@ function FieldRow({
 }
 
 export default function ProfileScreen() {
-  const { member, isLoading, saveMember } = useMember();
+  const { signOut, session } = useAuth();
+  const {
+    member,
+    memberStatus,
+    isLoading,
+    saveMember,
+    refreshMember,
+    memberLoadResult,
+    memberLoadErrorMessage,
+  } = useMember();
   const [form, setForm] = useState<MemberProfile>(member);
   const [saving, setSaving] = useState(false);
   const tintColor = useThemeColor({}, 'tint');
+  const errorColor = useThemeColor({}, 'error');
+  const mutedColor = useThemeColor({}, 'textMuted');
+  const surfaceColor = useThemeColor({}, 'surface');
+  const borderColor = useThemeColor({}, 'border');
 
   useEffect(() => {
     setForm(member);
@@ -70,6 +85,13 @@ export default function ProfileScreen() {
     }
   }, [form, saveMember]);
 
+  const handleSignOut = useCallback(() => {
+    Alert.alert('Sign out', 'You will need to sign in again to use the app.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign out', style: 'destructive', onPress: () => void signOut() },
+    ]);
+  }, [signOut]);
+
   if (isLoading) {
     return (
       <View style={styles.screen}>
@@ -90,9 +112,33 @@ export default function ProfileScreen() {
           <MembershipCard
             name={form.name}
             membershipNumber={form.membershipNumber}
-            status={form.membershipStatus}
+            status={memberStatus.membershipStatus}
             membershipExpiry={form.membershipExpiry}
           />
+
+          {isSupabaseConfigured && (memberLoadResult === 'no_row' || memberLoadResult === 'error') ? (
+            <ThemedView
+              style={[
+                styles.syncNotice,
+                { backgroundColor: surfaceColor, borderColor },
+              ]}>
+              <ThemedText style={[styles.syncNoticeTitle, { color: errorColor }]}>
+                {memberLoadResult === 'error' ? 'Could not load membership' : 'No membership record for this login'}
+              </ThemedText>
+              <ThemedText style={[styles.syncNoticeBody, { color: mutedColor }]}>
+                {memberLoadResult === 'error'
+                  ? memberLoadErrorMessage ?? 'Check your connection and try again.'
+                  : 'The app only sees the row in Supabase where members.id equals your signed-in user id. If the table shows “active” under a different id, fix the row or use the matching account.'}
+              </ThemedText>
+              {session?.user?.id ? (
+                <ThemedText style={styles.userIdMono} selectable>
+                  Your user id:{'\n'}
+                  {session.user.id}
+                </ThemedText>
+              ) : null}
+              <PrimaryButton title="Retry" onPress={() => void refreshMember()} fullWidth />
+            </ThemedView>
+          ) : null}
 
           <ThemedText type="subtitle" style={styles.sectionTitle}>
             Your details
@@ -118,6 +164,14 @@ export default function ProfileScreen() {
             disabled={saving}
             fullWidth
           />
+
+          <Pressable
+            onPress={handleSignOut}
+            style={({ pressed }) => [styles.signOutPressable, pressed && styles.signOutPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Sign out">
+            <ThemedText style={[styles.signOutLabel, { color: errorColor }]}>Sign out</ThemedText>
+          </Pressable>
         </ThemedView>
       </ScrollView>
     </View>
@@ -170,5 +224,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
     fontSize: FontSize.body,
+  },
+  signOutPressable: {
+    alignSelf: 'center',
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    marginTop: Spacing.sm,
+  },
+  signOutPressed: {
+    opacity: 0.7,
+  },
+  signOutLabel: {
+    fontSize: FontSize.body,
+    fontWeight: '600',
+  },
+  syncNotice: {
+    borderWidth: 1,
+    borderRadius: Radius.md,
+    padding: Spacing.lg,
+    gap: Spacing.md,
+  },
+  syncNoticeTitle: {
+    fontSize: FontSize.body,
+    fontWeight: '700',
+  },
+  syncNoticeBody: {
+    fontSize: FontSize.sm,
+    lineHeight: 20,
+  },
+  userIdMono: {
+    fontSize: 12,
+    fontFamily: 'monospace',
+    opacity: 0.9,
   },
 });

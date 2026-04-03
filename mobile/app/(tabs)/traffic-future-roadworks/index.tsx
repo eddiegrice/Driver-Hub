@@ -12,7 +12,7 @@ import type { TrafficSituation } from '@/types/traffic';
 import { formatDateForDisplay } from '@/types/member';
 
 const SITUATION_TYPE = 'future_roadworks';
-const LIGHT_EDGE = 'rgba(255, 255, 255, 0.1)';
+const LIGHT_EDGE = NeoGlass.cardBorder;
 
 function formatTime(iso: string | null): string {
   if (!iso) return '—';

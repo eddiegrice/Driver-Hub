@@ -1,12 +1,13 @@
 import { useFocusEffect } from '@react-navigation/native';
 import type { Href } from 'expo-router';
 import { useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
   RefreshControl,
   StyleSheet,
+  TextInput,
   View,
 } from 'react-native';
 
@@ -15,6 +16,7 @@ import { MenuSectionEyebrow } from '@/components/home/MenuIconGrid';
 import { ThemedText } from '@/components/themed-text';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useNews } from '@/context/NewsContext';
+import { cmsPostMatchesSearch } from '@/lib/cms-post-search';
 import { fetchCmsPosts } from '@/lib/cms-supabase';
 import { supabase } from '@/lib/supabase';
 import type { CmsPost } from '@/types/cms';
@@ -22,7 +24,7 @@ import { FontSize, FontWeight, NeoGlass, NeoText, Radius, Spacing } from '@/cons
 import { formatDateForDisplay } from '@/types/member';
 
 const CYAN = '#00CCFF';
-const LIGHT_EDGE = 'rgba(255, 255, 255, 0.1)';
+const LIGHT_EDGE = NeoGlass.cardBorder;
 
 export default function AdminNewsLandingScreen() {
   const router = useRouter();
@@ -32,6 +34,7 @@ export default function AdminNewsLandingScreen() {
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<Error | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState('');
 
   const loadNews = useCallback(async () => {
     setListError(null);
@@ -54,6 +57,11 @@ export default function AdminNewsLandingScreen() {
     void loadNews();
     void refreshPosts();
   }, [loadNews, refreshPosts]);
+
+  const filteredPosts = useMemo(
+    () => newsPosts.filter((p) => cmsPostMatchesSearch(p, search)),
+    [newsPosts, search]
+  );
 
   return (
     <AdminSubpageScaffold
@@ -95,29 +103,44 @@ export default function AdminNewsLandingScreen() {
           ) : newsPosts.length === 0 ? (
             <ThemedText style={styles.emptyList}>No news articles yet.</ThemedText>
           ) : (
-            <View style={styles.listBlock}>
-              {newsPosts.map((post, i) => (
-                <Pressable
-                  key={post.id}
-                  onPress={() => router.push(`/admin/news/${post.id}` as Href)}
-                  style={({ pressed }) => [
-                    styles.row,
-                    i === newsPosts.length - 1 && styles.rowLast,
-                    pressed && styles.rowPressed,
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Edit article: ${post.title}`}
-                >
-                  <ThemedText style={styles.rowTitle} numberOfLines={2}>
-                    {post.title}
-                  </ThemedText>
-                  <ThemedText style={styles.rowMeta}>
-                    {formatDateForDisplay(post.published_at.slice(0, 10))}
-                    {post.isFrontPageAnnouncement ? ' · Home' : ''}
-                  </ThemedText>
-                </Pressable>
-              ))}
-            </View>
+            <>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search articles…"
+                placeholderTextColor={NeoText.muted}
+                value={search}
+                onChangeText={setSearch}
+                autoCorrect={false}
+                autoCapitalize="none"
+              />
+              {filteredPosts.length === 0 ? (
+                <ThemedText style={styles.emptyList}>No articles match your search.</ThemedText>
+              ) : (
+                <View style={styles.listBlock}>
+                  {filteredPosts.map((post, i) => (
+                    <Pressable
+                      key={post.id}
+                      onPress={() => router.push(`/admin/news/${post.id}` as Href)}
+                      style={({ pressed }) => [
+                        styles.row,
+                        i === filteredPosts.length - 1 && styles.rowLast,
+                        pressed && styles.rowPressed,
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Edit article: ${post.title}`}
+                    >
+                      <ThemedText style={styles.rowTitle} numberOfLines={2}>
+                        {post.title}
+                      </ThemedText>
+                      <ThemedText style={styles.rowMeta}>
+                        {formatDateForDisplay(post.published_at.slice(0, 10))}
+                        {post.isFrontPageAnnouncement ? ' · Home' : ''}
+                      </ThemedText>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </>
           )}
         </GlassCard>
       </View>
@@ -173,6 +196,17 @@ const styles = StyleSheet.create({
   panelHeaderWrap: {
     alignItems: 'center',
     marginBottom: Spacing.sm,
+  },
+  searchInput: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: NeoGlass.cardBorder,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    fontSize: FontSize.sm,
+    color: NeoText.primary,
+    marginBottom: Spacing.md,
   },
   listSpinner: {
     marginVertical: Spacing.md,

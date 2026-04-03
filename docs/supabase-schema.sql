@@ -17,6 +17,8 @@ create table if not exists public.members (
   plate_expiry date,
   membership_number text not null default '',
   membership_status text not null default 'pending' check (membership_status in ('active', 'expired', 'pending')),
+  -- Date paid subscription first became active (used as membership card "Valid From")
+  subscription_started_at date,
   membership_expiry date,
   -- Membership source: app_store (from IAP) or legacy (pre-app migration)
   membership_source text not null default 'app_store' check (membership_source in ('app_store', 'legacy')),
@@ -51,6 +53,14 @@ do $$
 begin
   if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'members' and column_name = 'is_admin') then
     alter table public.members add column is_admin boolean not null default false;
+  end if;
+end $$;
+
+-- Add paid subscription start column if this script is re-run after members table already existed
+do $$
+begin
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'members' and column_name = 'subscription_started_at') then
+    alter table public.members add column subscription_started_at date;
   end if;
 end $$;
 
@@ -92,13 +102,42 @@ create trigger members_updated_at
 -- Optional: create a member row when a new user signs up (so app doesn't have to)
 create or replace function public.handle_new_user()
 returns trigger as $$
+declare
+  next_member_number bigint;
 begin
-  insert into public.members (id, email)
-  values (new.id, new.email)
+  next_member_number := nextval('public.membership_number_seq');
+  insert into public.members (id, email, membership_number)
+  values (new.id, new.email, lpad(next_member_number::text, 4, '0'))
   on conflict (id) do nothing;
   return new;
 end;
 $$ language plpgsql security definer;
+
+-- Sequence + helper for assigning sequential membership numbers to all members.
+create sequence if not exists public.membership_number_seq as bigint start with 1 increment by 1;
+
+-- Backfill existing rows that have blank membership numbers.
+with numbered as (
+  select
+    m.id,
+    row_number() over (order by m.created_at asc, m.id asc) as rn
+  from public.members m
+  where coalesce(trim(m.membership_number), '') = ''
+)
+update public.members m
+set membership_number = lpad(numbered.rn::text, 4, '0')
+from numbered
+where m.id = numbered.id;
+
+-- Ensure next sequence value is higher than current highest membership number.
+select setval(
+  'public.membership_number_seq',
+  greatest(
+    coalesce((select max(nullif(regexp_replace(membership_number, '\D', '', 'g'), '')::bigint) from public.members), 0),
+    0
+  ),
+  true
+);
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created

@@ -5,9 +5,9 @@ import type { MenuGridItem } from '@/components/home/MenuIconGrid';
 import { ThemedText } from '@/components/themed-text';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FontSize, FontWeight, NeoText, Radius, Spacing } from '@/constants/theme';
+import { FontSize, FontWeight, NeoGlass, NeoText, Radius, Spacing } from '@/constants/theme';
 
-const LIGHT_EDGE = 'rgba(255, 255, 255, 0.1)';
+const LIGHT_EDGE = NeoGlass.cardBorder;
 
 const PLACEHOLDER_COPY = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.';
 

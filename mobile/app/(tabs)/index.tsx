@@ -9,9 +9,9 @@ import { ThemedText } from '@/components/themed-text';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useMember } from '@/context/MemberContext';
 import { HUB_SCROLL_BOTTOM_GAP } from '@/constants/mainBottomBar';
-import { FontSize, FontWeight, NeoText, Radius, Spacing } from '@/constants/theme';
+import { FontSize, FontWeight, NeoGlass, NeoText, Radius, Spacing } from '@/constants/theme';
 
-const LIGHT_EDGE = 'rgba(255, 255, 255, 0.1)';
+const LIGHT_EDGE = NeoGlass.cardBorder;
 
 const PHD_MATRIX_MENU: MenuGridItem[] = [
   { route: '/profile', label: 'Profile', icon: 'person.crop.circle' },
@@ -22,7 +22,6 @@ export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { memberStatus } = useMember();
-
   const isActive = memberStatus.isActive;
   const membershipStatus = memberStatus.membershipStatus;
 
@@ -71,7 +70,7 @@ export default function HomeScreen() {
           title="Your PHD Matrix"
           items={PHD_MATRIX_MENU}
           itemsPerRow={2}
-          isMemberActive
+          isMemberActive={isActive}
           onNavigate={(route) => router.push(route)}
           onPremiumBlocked={() => {}}
         />

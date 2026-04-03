@@ -1,15 +1,15 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ArticleDetailContent } from '@/components/ArticleDetailContent';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
+import { AssociationMembershipGate } from '@/components/AssociationMembershipGate';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { fetchCmsPostById } from '@/lib/cms-supabase';
 import { supabase } from '@/lib/supabase';
 import type { CmsPost } from '@/types/cms';
-import { AssociationMembershipGate } from '@/components/AssociationMembershipGate';
+import { Spacing } from '@/constants/theme';
 
 function LibraryDetailInner() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -27,66 +27,80 @@ function LibraryDetailInner() {
         setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   if (!id) {
     return (
-      <ParallaxScrollView headerBackgroundColor={{ light: '#f4f4f4', dark: '#121212' }} headerImage={null}>
-        <ThemedView style={styles.container}>
+      <View style={styles.screen}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
           <ThemedText>Post not found.</ThemedText>
           <TouchableOpacity onPress={() => router.back()}>
             <ThemedText type="link">Go back</ThemedText>
           </TouchableOpacity>
-        </ThemedView>
-      </ParallaxScrollView>
+        </ScrollView>
+      </View>
     );
   }
 
   if (loading) {
     return (
-      <ParallaxScrollView headerBackgroundColor={{ light: '#f4f4f4', dark: '#121212' }} headerImage={null}>
-        <ThemedView style={styles.container}>
+      <View style={styles.screen}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
           <ThemedText>Loading…</ThemedText>
-        </ThemedView>
-      </ParallaxScrollView>
+        </ScrollView>
+      </View>
     );
   }
 
   if (!post) {
     return (
-      <ParallaxScrollView headerBackgroundColor={{ light: '#f4f4f4', dark: '#121212' }} headerImage={null}>
-        <ThemedView style={styles.container}>
+      <View style={styles.screen}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
           <ThemedText>Post not found.</ThemedText>
           <TouchableOpacity onPress={() => router.back()}>
             <ThemedText type="link">Go back</ThemedText>
           </TouchableOpacity>
-        </ThemedView>
-      </ParallaxScrollView>
+        </ScrollView>
+      </View>
     );
   }
 
   return (
-    <ParallaxScrollView headerBackgroundColor={{ light: '#f4f4f4', dark: '#121212' }} headerImage={null}>
-      <ThemedView style={styles.container}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backRow}>
-          <ThemedText type="link">← Back to library</ThemedText>
-        </TouchableOpacity>
-        <ArticleDetailContent post={post} />
-      </ThemedView>
-    </ParallaxScrollView>
+    <View style={styles.screen}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
+        <ThemedView style={styles.inner}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backRow}>
+            <ThemedText type="link">← Back to library</ThemedText>
+          </TouchableOpacity>
+          <ArticleDetailContent post={post} showHeroImage={false} />
+        </ThemedView>
+      </ScrollView>
+    </View>
   );
 }
 
 export default function LibraryDetailScreen() {
   return (
-    <AssociationMembershipGate title="Library">
+    <AssociationMembershipGate title="Guidance Library">
       <LibraryDetailInner />
     </AssociationMembershipGate>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 12 },
-  backRow: { marginBottom: 4 },
+  screen: { flex: 1 },
+  scroll: { flex: 1 },
+  scrollContent: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.xxl,
+  },
+  inner: { gap: 12 },
+  backRow: { alignSelf: 'flex-start' },
 });

@@ -10,7 +10,7 @@ import { fetchTrafficTravelTimes } from '@/lib/traffic-supabase';
 import { FontSize, NeoGlass, NeoText, Radius, Spacing } from '@/constants/theme';
 import type { TrafficTravelTime } from '@/types/traffic';
 
-const LIGHT_EDGE = 'rgba(255, 255, 255, 0.1)';
+const LIGHT_EDGE = NeoGlass.cardBorder;
 
 function formatMeasuredAt(iso: string): string {
   const d = iso.slice(0, 10);

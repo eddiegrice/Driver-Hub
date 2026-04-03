@@ -8,7 +8,7 @@ import { AdminSubpageScaffold } from '@/components/admin/AdminSubpageScaffold';
 import { NewsArticleEditor } from '@/components/admin/NewsArticleEditor';
 import { ThemedText } from '@/components/themed-text';
 import { useNews } from '@/context/NewsContext';
-import { fetchCmsPostById, updateCmsNewsPost } from '@/lib/cms-supabase';
+import { fetchCmsPostById, updateCmsNewsPost, uploadCmsPostImage } from '@/lib/cms-supabase';
 import { supabase } from '@/lib/supabase';
 import type { CmsPost } from '@/types/cms';
 import { FontSize, NeoText, Spacing } from '@/constants/theme';
@@ -53,7 +53,7 @@ export default function AdminNewsEditScreen() {
     <AdminSubpageScaffold
       subsystemTitle="Edit article"
       backLabel="← News System"
-      onBackPress={() => router.push('/admin/news' as Href)}
+      onBackPress={() => router.dismissTo('/admin/news' as Href)}
       keyboardShouldPersistTaps="handled"
     >
       {loading ? (
@@ -68,17 +68,32 @@ export default function AdminNewsEditScreen() {
         <NewsArticleEditor
           key={post.id}
           submitLabel="Save changes"
-          hint="Update the article text and options. The home dashboard switch controls whether this post appears on everyone’s home screen."
           initialTitle={post.title}
           initialBody={post.body}
           initialExcerpt={post.excerpt ?? ''}
           initialAnnounceOnHome={post.isFrontPageAnnouncement}
+          initialThumbnailUrl={post.thumbnail_url}
           onSubmit={async (p) => {
+            let thumbnailUrl: string | null | undefined = undefined;
+
+            if (p.removeThumbnail) {
+              thumbnailUrl = null;
+            } else if (p.thumbnailLocalUri) {
+              const { publicUrl, error: upErr } = await uploadCmsPostImage(supabase, {
+                postId: post.id,
+                localUri: p.thumbnailLocalUri,
+                mimeType: p.thumbnailMimeType,
+              });
+              if (upErr) return { error: upErr };
+              thumbnailUrl = publicUrl;
+            }
+
             const { error } = await updateCmsNewsPost(supabase, post.id, {
               title: p.title,
               body: p.body,
               excerpt: p.excerpt.trim() ? p.excerpt.trim() : null,
               isFrontPageAnnouncement: p.announceOnHome,
+              thumbnailUrl,
             });
             return { error };
           }}

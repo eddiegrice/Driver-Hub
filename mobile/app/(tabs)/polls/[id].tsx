@@ -1,51 +1,104 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
-import ParallaxScrollView from '@/components/parallax-scroll-view';
+import { AssociationMembershipGate } from '@/components/AssociationMembershipGate';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { usePolls } from '@/context/PollsContext';
-import { AssociationMembershipGate } from '@/components/AssociationMembershipGate';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import type { PollAnswer, PollQuestion } from '@/types/polls';
-import { formatDateForDisplay } from '@/types/member';
-import { isPollClosed } from '@/types/polls';
+import { scrollContentGutter } from '@/constants/scrollLayout';
+import { NeoGlass, Radius } from '@/constants/theme';
+import type { Poll, PollAnswer, PollQuestion, PollResultsMember } from '@/types/polls';
+import { formatDateTimeLocalForDisplay } from '@/types/member';
+import {
+  isPollClosedForMember,
+  isPollOpenForMember,
+  isPollResultsPublished,
+} from '@/types/polls';
+
+/** Matches admin / polls CTAs (e.g. primary save). */
+const SUBMIT_CYAN = '#00CCFF';
+
+/**
+ * Stack content sits below the global AppHeader (which already applies safe-area top inset).
+ * Do not add `insets.top` here — that doubled the status bar gap on poll / results screens.
+ */
+function PollMemberScrollShell({ children }: { children: ReactNode }) {
+  const backgroundColor = useThemeColor({}, 'background');
+  return (
+    <View style={[shellStyles.flex, { backgroundColor }]}>
+      <ScrollView
+        style={shellStyles.flex}
+        contentContainerStyle={scrollContentGutter}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
+        {children}
+      </ScrollView>
+    </View>
+  );
+}
+
+const shellStyles = StyleSheet.create({
+  flex: { flex: 1 },
+});
 
 function PollDetailInner() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: idParam } = useLocalSearchParams<{ id: string | string[] }>();
+  const id = Array.isArray(idParam) ? idParam[0] : idParam;
   const router = useRouter();
-  const { getPoll, getMyResponse, submitResponse, getResults } = usePolls();
-  const poll = id ? getPoll(id) : undefined;
+  const { getPoll, ensurePollLoaded, getMyResponse, submitResponse, getResults, polls } = usePolls();
+  const [poll, setPoll] = useState<Poll | null>(null);
+  const [loadingPoll, setLoadingPoll] = useState(true);
   const myResponse = id ? getMyResponse(id) : null;
 
   const [answers, setAnswers] = useState<Record<string, string[] | string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [results, setResults] = useState<Awaited<ReturnType<typeof getResults>>>(null);
+  const [results, setResults] = useState<PollResultsMember | null>(null);
 
-  const colorScheme = useColorScheme();
   const tintColor = useThemeColor({}, 'tint');
   const cardBg = useThemeColor({ light: 'rgba(0,0,0,0.05)', dark: 'rgba(255,255,255,0.06)' }, 'background');
-  const buttonTextColor = colorScheme === 'dark' ? '#111' : '#fff';
   const textColor = useThemeColor({}, 'text');
   const borderColor = useThemeColor({}, 'border');
   const backgroundColor = useThemeColor({}, 'background');
 
-  const closed = poll ? isPollClosed(poll) : false;
+  useEffect(() => {
+    if (!id) {
+      setPoll(null);
+      setLoadingPoll(false);
+      return;
+    }
+    const cached = getPoll(id);
+    if (cached) {
+      setPoll(cached);
+      setLoadingPoll(false);
+      return;
+    }
+    setLoadingPoll(true);
+    void ensurePollLoaded(id).then((p) => {
+      setPoll(p);
+      setLoadingPoll(false);
+    });
+  }, [id, getPoll, ensurePollLoaded]);
 
   useEffect(() => {
-    if (!id || !closed) return;
-    getResults(id).then(setResults);
-  }, [id, closed, getResults]);
+    if (!id) return;
+    const c = getPoll(id);
+    if (c) setPoll(c);
+  }, [id, getPoll, polls]);
+
+  const closed = poll ? isPollClosedForMember(poll) : false;
+  const open = poll ? isPollOpenForMember(poll) : false;
+  const published = poll ? isPollResultsPublished(poll) : false;
+
+  useEffect(() => {
+    if (!id || !closed || !published) {
+      setResults(null);
+      return;
+    }
+    void getResults(id).then(setResults);
+  }, [id, closed, published, getResults]);
 
   const handleSelectOption = useCallback((questionId: string, optionId: string, multiple: boolean) => {
     setAnswers((prev) => {
@@ -63,141 +116,212 @@ function PollDetailInner() {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
   }, []);
 
-  const handleSubmit = useCallback(async () => {
-    if (!poll || !id) return;
-    const pollAnswers: PollAnswer[] = poll.questions.map((q) => {
+  const buildAnswersPayload = useCallback((): PollAnswer[] | null => {
+    if (!poll) return null;
+    const out: PollAnswer[] = [];
+    for (const q of poll.questions) {
       const val = answers[q.id];
+      if (q.type === 'number') {
+        const raw = typeof val === 'string' ? val.trim() : '';
+        const n = parseFloat(raw.replace(',', '.'));
+        if (!Number.isFinite(n)) return null;
+        out.push({ questionId: q.id, numberValue: n });
+        continue;
+      }
       if (q.type === 'text') {
-        return { questionId: q.id, freeText: typeof val === 'string' ? val : '' };
+        const t = typeof val === 'string' ? val.trim() : '';
+        if (!t) return null;
+        out.push({ questionId: q.id, freeText: t });
+        continue;
       }
       const optionIds = Array.isArray(val) ? val : val ? [val] : [];
-      return { questionId: q.id, optionIds };
-    });
-    const required = poll.questions.filter((q) => q.type !== 'text' && q.options.length > 0);
-    const missing = required.some((q) => {
-      const val = answers[q.id];
-      const optionIds = Array.isArray(val) ? val : val ? [val] : [];
-      return optionIds.length === 0;
-    });
-    if (missing) {
-      Alert.alert('Answer required', 'Please answer all questions.');
+      if (optionIds.length === 0) return null;
+      const selectedWriteIn = q.options.find((o) => o.isWriteInSlot && optionIds.includes(o.id));
+      const wiRaw = answers[`${q.id}_writein`];
+      const wiStr = typeof wiRaw === 'string' ? wiRaw.trim() : '';
+      const writeInText =
+        selectedWriteIn && q.allowWriteIn ? (wiStr.length > 0 ? wiStr : undefined) : undefined;
+      if (selectedWriteIn && q.allowWriteIn && !writeInText) return null;
+      out.push({
+        questionId: q.id,
+        optionIds,
+        writeInText: writeInText || undefined,
+      });
+    }
+    return out;
+  }, [poll, answers]);
+
+  const handleSubmit = useCallback(async () => {
+    if (!poll || !id) return;
+    const payload = buildAnswersPayload();
+    if (!payload) {
+      Alert.alert('Answer required', 'Please answer every question.');
       return;
     }
     setSubmitting(true);
     try {
-      await submitResponse(id, pollAnswers);
+      const { error } = await submitResponse(id, payload);
+      if (error) {
+        Alert.alert('Error', error);
+        return;
+      }
       setSubmitted(true);
-    } catch {
-      Alert.alert('Error', 'Could not submit. Try again.');
     } finally {
       setSubmitting(false);
     }
-  }, [poll, id, answers, submitResponse]);
+  }, [poll, id, buildAnswersPayload, submitResponse]);
+
+  if (loadingPoll) {
+    return (
+      <PollMemberScrollShell>
+        <ThemedView style={styles.container}>
+          <ThemedText>Loading…</ThemedText>
+        </ThemedView>
+      </PollMemberScrollShell>
+    );
+  }
 
   if (!id || !poll) {
     return (
-      <ParallaxScrollView headerBackgroundColor={{ light: '#f4f4f4', dark: '#121212' }} headerImage={null}>
+      <PollMemberScrollShell>
         <ThemedView style={styles.container}>
           <ThemedText>Poll not found.</ThemedText>
           <TouchableOpacity onPress={() => router.back()}>
             <ThemedText type="link">Go back</ThemedText>
           </TouchableOpacity>
         </ThemedView>
-      </ParallaxScrollView>
+      </PollMemberScrollShell>
     );
   }
 
-  if (closed) {
+  if (closed && !published) {
     return (
-      <ParallaxScrollView headerBackgroundColor={{ light: '#f4f4f4', dark: '#121212' }} headerImage={null}>
+      <PollMemberScrollShell>
         <ThemedView style={styles.container}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backRow}>
-            <ThemedText type="link">← Back to polls</ThemedText>
+            <ThemedText type="link">← Back</ThemedText>
           </TouchableOpacity>
           <ThemedText type="title">{poll.title}</ThemedText>
-          <ThemedText style={styles.meta}>Closed {formatDateForDisplay(poll.endsAt.slice(0, 10))}</ThemedText>
-          <ThemedText type="subtitle" style={styles.resultsTitle}>Results</ThemedText>
-          {results ? (
-            <>
-              <ThemedText style={styles.totalResponses}>{results.totalResponses} responses</ThemedText>
-              {poll.questions.map((q) => {
-                const optionCounts = results.questionResults[q.id] ?? [];
-                const total = optionCounts.reduce((s, x) => s + x.count, 0);
-                return (
-                  <ThemedView key={q.id} style={[styles.resultBlock, { backgroundColor: cardBg }]}>
-                    <ThemedText type="defaultSemiBold">{q.questionText}</ThemedText>
-                    {q.options.map((opt) => {
-                      const row = optionCounts.find((r) => r.optionId === opt.id);
-                      const count = row?.count ?? 0;
-                      const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-                      return (
-                        <ThemedView key={opt.id} style={styles.resultRow}>
-                          <ThemedText style={styles.resultLabel}>{opt.text}</ThemedText>
-                          <ThemedText style={styles.resultPct}>{pct}%</ThemedText>
+          <ThemedText style={styles.meta}>Closed {formatDateTimeLocalForDisplay(poll.closeAt)}</ThemedText>
+          <ThemedView style={[styles.glassTile, { backgroundColor: cardBg }]}>
+            <ThemedText type="defaultSemiBold">Results are tabulating</ThemedText>
+            <ThemedText style={styles.thankYouText}>Please check back later.</ThemedText>
+          </ThemedView>
+        </ThemedView>
+      </PollMemberScrollShell>
+    );
+  }
+
+  if (closed && published) {
+    return (
+      <PollMemberScrollShell>
+        <ThemedView style={styles.container}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backRow}>
+            <ThemedText type="link">← Back</ThemedText>
+          </TouchableOpacity>
+          <ThemedText type="title">{poll.title}</ThemedText>
+          <ThemedText style={styles.meta}>Closed {formatDateTimeLocalForDisplay(poll.closeAt)}</ThemedText>
+          <ThemedText type="subtitle" style={styles.resultsTitle}>
+            {poll.kind === 'survey' ? 'Survey Results' : 'Poll Results'}
+          </ThemedText>
+          {!results ? (
+            <ThemedText style={styles.noResults}>Loading results…</ThemedText>
+          ) : (
+            results.questions
+              .filter((rq) => poll.kind !== 'survey' || rq.options.length > 0)
+              .map((rq: PollResultsMember['questions'][number]) => (
+                <ThemedView
+                  key={rq.questionId}
+                  style={[styles.glassTile, styles.resultBlock, { backgroundColor: cardBg }]}>
+                  <ThemedText type="defaultSemiBold">{rq.prompt}</ThemedText>
+                  {rq.options.length === 0 ? (
+                    <ThemedText style={styles.mutedSmall}>
+                      Written or numeric answers are not shown here to protect privacy.
+                    </ThemedText>
+                  ) : (
+                    <View style={styles.resultOptions}>
+                      {rq.options.map((opt) => (
+                        <ThemedView key={opt.optionId} style={styles.resultRow}>
+                          <ThemedText style={styles.resultLabel}>{opt.label}</ThemedText>
+                          <ThemedText style={styles.resultPct}>{opt.percent}%</ThemedText>
                           <View style={[styles.resultBarBg, { backgroundColor: borderColor }]}>
                             <View
-                              style={[styles.resultBarFill, { width: `${pct}%`, backgroundColor: tintColor }]}
+                              style={[styles.resultBarFill, { width: `${opt.percent}%`, backgroundColor: tintColor }]}
                             />
                           </View>
                         </ThemedView>
-                      );
-                    })}
-                  </ThemedView>
-                );
-              })}
-            </>
-          ) : (
-            <ThemedText style={styles.noResults}>No results available.</ThemedText>
+                      ))}
+                    </View>
+                  )}
+                </ThemedView>
+              ))
           )}
         </ThemedView>
-      </ParallaxScrollView>
+      </PollMemberScrollShell>
+    );
+  }
+
+  if (!open) {
+    return (
+      <PollMemberScrollShell>
+        <ThemedView style={styles.container}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backRow}>
+            <ThemedText type="link">← Back</ThemedText>
+          </TouchableOpacity>
+          <ThemedText type="title">{poll.title}</ThemedText>
+          <ThemedText style={styles.meta}>
+            This {poll.kind === 'survey' ? 'survey' : 'poll'} is not open yet.
+          </ThemedText>
+        </ThemedView>
+      </PollMemberScrollShell>
     );
   }
 
   if (myResponse || submitted) {
     return (
-      <ParallaxScrollView headerBackgroundColor={{ light: '#f4f4f4', dark: '#121212' }} headerImage={null}>
+      <PollMemberScrollShell>
         <ThemedView style={styles.container}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backRow}>
-            <ThemedText type="link">← Back to polls</ThemedText>
+            <ThemedText type="link">← Back</ThemedText>
           </TouchableOpacity>
           <ThemedText type="title">{poll.title}</ThemedText>
-          <ThemedView style={[styles.thankYouCard, { backgroundColor: cardBg }]}>
+          <ThemedView style={[styles.glassTile, { backgroundColor: cardBg }]}>
             <ThemedText type="defaultSemiBold">Thank you</ThemedText>
-            <ThemedText style={styles.thankYouText}>
-              {myResponse && !submitted
-                ? "You've already responded to this poll."
-                : 'Your response has been recorded.'}
-            </ThemedText>
+            <ThemedText style={styles.thankYouText}>Your response has been recorded anonymously.</ThemedText>
             <ThemedText style={styles.resultsHint}>
-              Results will be visible when the poll closes.
+              Return when the {poll.kind === 'survey' ? 'survey' : 'poll'} closes to view the results.
             </ThemedText>
           </ThemedView>
         </ThemedView>
-      </ParallaxScrollView>
+      </PollMemberScrollShell>
     );
   }
 
   return (
-    <ParallaxScrollView headerBackgroundColor={{ light: '#f4f4f4', dark: '#121212' }} headerImage={null}>
+    <PollMemberScrollShell>
       <ThemedView style={styles.container}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backRow}>
-          <ThemedText type="link">← Back to polls</ThemedText>
+          <ThemedText type="link">← Back</ThemedText>
         </TouchableOpacity>
         <ThemedText type="title">{poll.title}</ThemedText>
-        {poll.description ? (
-          <ThemedText style={styles.description}>{poll.description}</ThemedText>
-        ) : null}
-        <ThemedText style={styles.meta}>Closes {formatDateForDisplay(poll.endsAt.slice(0, 10))}</ThemedText>
+        {poll.description ? <ThemedText style={styles.description}>{poll.description}</ThemedText> : null}
+        <ThemedText style={styles.meta}>Closes {formatDateTimeLocalForDisplay(poll.closeAt)}</ThemedText>
 
-        <ScrollView style={styles.questions} scrollEnabled={false}>
+        <ScrollView
+          style={styles.questions}
+          contentContainerStyle={styles.questionsContent}
+          scrollEnabled={false}>
           {poll.questions.map((q) => (
             <QuestionBlock
               key={q.id}
               question={q}
               value={answers[q.id]}
+              writeInValue={
+                typeof answers[`${q.id}_writein`] === 'string' ? (answers[`${q.id}_writein`] as string) : ''
+              }
               onSelectOption={handleSelectOption}
               onTextAnswer={handleTextAnswer}
+              onWriteInChange={(qid, t) => setAnswers((p) => ({ ...p, [`${qid}_writein`]: t }))}
               tintColor={tintColor}
               cardBg={cardBg}
               textColor={textColor}
@@ -208,21 +332,19 @@ function PollDetailInner() {
         </ScrollView>
 
         <TouchableOpacity
-          style={[styles.submitButton, { backgroundColor: tintColor }]}
-          onPress={handleSubmit}
+          style={[styles.submitButton, { backgroundColor: SUBMIT_CYAN }]}
+          onPress={() => void handleSubmit()}
           disabled={submitting}>
-          <ThemedText style={[styles.submitButtonText, { color: buttonTextColor }]}>
-            {submitting ? 'Submitting…' : 'Submit'}
-          </ThemedText>
+          <ThemedText style={styles.submitButtonText}>{submitting ? 'Submitting…' : 'Submit'}</ThemedText>
         </TouchableOpacity>
       </ThemedView>
-    </ParallaxScrollView>
+    </PollMemberScrollShell>
   );
 }
 
 export default function PollDetailScreen() {
   return (
-    <AssociationMembershipGate title="Polls">
+    <AssociationMembershipGate title="Polls and Surveys">
       <PollDetailInner />
     </AssociationMembershipGate>
   );
@@ -231,8 +353,10 @@ export default function PollDetailScreen() {
 function QuestionBlock({
   question,
   value,
+  writeInValue,
   onSelectOption,
   onTextAnswer,
+  onWriteInChange,
   tintColor,
   cardBg,
   textColor,
@@ -241,57 +365,110 @@ function QuestionBlock({
 }: {
   question: PollQuestion;
   value: string[] | string | undefined;
+  writeInValue: string;
   onSelectOption: (qId: string, optId: string, multiple: boolean) => void;
   onTextAnswer: (qId: string, text: string) => void;
+  onWriteInChange: (qId: string, text: string) => void;
   tintColor: string;
   cardBg: string;
   textColor: string;
   borderColor: string;
   backgroundColor: string;
 }) {
+  const optionRowInsetBg = useThemeColor(
+    { light: 'rgba(15, 23, 42, 0.07)', dark: 'rgba(255, 255, 255, 0.08)' },
+    'background'
+  );
   const selectedIds = Array.isArray(value) ? value : value ? [value] : [];
   const textVal = typeof value === 'string' ? value : '';
+  const multiline = question.dbType === 'text_long';
 
-  if (question.type === 'text') {
+  if (question.type === 'number') {
     return (
-      <ThemedView style={styles.questionBlock}>
+      <ThemedView style={[styles.glassTile, styles.questionGlassTile, { backgroundColor: cardBg }]}>
         <ThemedText type="defaultSemiBold">{question.questionText}</ThemedText>
         <TextInput
           style={[styles.textInput, { color: textColor, backgroundColor, borderColor }]}
           value={textVal}
           onChangeText={(t) => onTextAnswer(question.id, t)}
-          placeholder="Your answer"
+          placeholder="Enter a number"
           placeholderTextColor={borderColor}
-          multiline
+          keyboardType="decimal-pad"
         />
       </ThemedView>
     );
   }
 
+  if (question.type === 'text') {
+    return (
+      <ThemedView style={[styles.glassTile, styles.questionGlassTile, { backgroundColor: cardBg }]}>
+        <ThemedText type="defaultSemiBold">{question.questionText}</ThemedText>
+        <TextInput
+          style={[styles.textInput, multiline && styles.textInputTall, { color: textColor, backgroundColor, borderColor }]}
+          value={textVal}
+          onChangeText={(t) => onTextAnswer(question.id, t)}
+          placeholder="Your answer"
+          placeholderTextColor={borderColor}
+          multiline={multiline}
+          textAlignVertical="top"
+        />
+      </ThemedView>
+    );
+  }
+
+  const showWriteIn =
+    question.allowWriteIn &&
+    question.options.some((o) => o.isWriteInSlot && selectedIds.includes(o.id));
+
+  const multiple = question.type === 'multiple';
+
   return (
-    <ThemedView style={styles.questionBlock}>
+    <ThemedView style={[styles.glassTile, styles.questionGlassTile, { backgroundColor: cardBg }]}>
       <ThemedText type="defaultSemiBold">{question.questionText}</ThemedText>
+      {multiple ? (
+        <ThemedText style={styles.multiSelectHint}>You can select more than one answer.</ThemedText>
+      ) : null}
       <ThemedView style={styles.options}>
         {question.options.map((opt) => {
           const selected = selectedIds.includes(opt.id);
-          const multiple = question.type === 'multiple';
           return (
             <TouchableOpacity
               key={opt.id}
               style={[
                 styles.optionRow,
-                { backgroundColor: cardBg },
+                { backgroundColor: optionRowInsetBg },
                 selected && { borderColor: tintColor, borderWidth: 2 },
               ]}
               onPress={() => onSelectOption(question.id, opt.id, multiple)}>
-              <ThemedView style={[styles.radioOuter, { borderColor: tintColor }]}>
-                {selected && <ThemedView style={[styles.radioInner, { backgroundColor: tintColor }]} />}
-              </ThemedView>
+              {/* Plain View: ThemedView forces theme background and made checkbox squares read as solid black. */}
+              <View
+                style={[
+                  multiple ? styles.checkboxOuter : styles.radioOuter,
+                  { borderColor: tintColor, backgroundColor: 'transparent' },
+                ]}>
+                {selected ? (
+                  <View
+                    style={[
+                      multiple ? styles.checkboxInner : styles.radioInner,
+                      { backgroundColor: tintColor },
+                    ]}
+                  />
+                ) : null}
+              </View>
               <ThemedText style={styles.optionText}>{opt.text}</ThemedText>
             </TouchableOpacity>
           );
         })}
       </ThemedView>
+      {showWriteIn ? (
+        <TextInput
+          style={[styles.textInput, { color: textColor, backgroundColor, borderColor }]}
+          value={writeInValue}
+          onChangeText={(t) => onWriteInChange(question.id, t)}
+          placeholder="Please specify"
+          placeholderTextColor={borderColor}
+        />
+      ) : null}
     </ThemedView>
   );
 }
@@ -311,11 +488,20 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   questions: {
-    gap: 20,
+    flexGrow: 0,
   },
-  questionBlock: {
-    gap: 10,
-    marginTop: 8,
+  questionsContent: {
+    gap: 16,
+    paddingBottom: 4,
+  },
+  /** Live poll / survey: cyan edge + padding; inner rhythm slightly looser than compact glass tiles. */
+  questionGlassTile: {
+    gap: 12,
+  },
+  multiSelectHint: {
+    fontSize: 13,
+    opacity: 0.72,
+    lineHeight: 18,
   },
   options: {
     gap: 10,
@@ -342,6 +528,20 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
   },
+  /** Multiple-choice: square outline vs circular radio. */
+  checkboxOuter: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 2,
+  },
   optionText: {
     flex: 1,
   },
@@ -351,8 +551,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
-    minHeight: 80,
-    textAlignVertical: 'top',
+    minHeight: 44,
+  },
+  textInputTall: {
+    minHeight: 100,
   },
   submitButton: {
     marginTop: 24,
@@ -363,10 +565,14 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontWeight: '600',
     fontSize: 16,
+    color: '#000',
   },
-  thankYouCard: {
+  /** Cyan-tinted border to match Neo glass cards (e.g. {@link GlassCard}). */
+  glassTile: {
     padding: 20,
-    borderRadius: 12,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: NeoGlass.cardBorder,
     gap: 8,
   },
   thankYouText: {
@@ -379,19 +585,20 @@ const styles = StyleSheet.create({
   resultsTitle: {
     marginTop: 16,
   },
-  totalResponses: {
-    fontSize: 14,
-    opacity: 0.8,
-    marginBottom: 12,
+  mutedSmall: {
+    fontSize: 13,
+    opacity: 0.75,
   },
   resultBlock: {
     padding: 16,
-    borderRadius: 12,
-    gap: 12,
     marginTop: 12,
+    gap: 12,
+  },
+  resultOptions: {
+    gap: 24,
   },
   resultRow: {
-    gap: 4,
+    gap: 6,
   },
   resultLabel: {
     fontSize: 15,

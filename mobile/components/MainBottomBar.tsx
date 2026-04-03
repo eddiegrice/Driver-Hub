@@ -1,5 +1,5 @@
 /**
- * Fixed primary navigation: Home, Scout, Association. Car-inspired segmented control.
+ * Fixed primary navigation: Home, Traffic Scout, Events Scout, Association.
  */
 import * as Haptics from 'expo-haptics';
 import { useRouter, usePathname } from 'expo-router';
@@ -12,10 +12,13 @@ import { FontSize, FontWeight, NeoGlass, NeoText, Spacing } from '@/constants/th
 
 const CYAN = '#00CCFF';
 
-export function getActiveDashboardTab(pathname: string): 'home' | 'scout' | 'association' {
+export function getActiveDashboardTab(pathname: string): 'home' | 'trafficScout' | 'eventsScout' | 'association' {
   const p = pathname.replace(/\/$/, '') || '/';
+  if (p === '/events-scout' || p.startsWith('/events-')) {
+    return 'eventsScout';
+  }
   if (p === '/scout' || p.startsWith('/traffic-') || p.startsWith('/motorway-status')) {
-    return 'scout';
+    return 'trafficScout';
   }
   if (
     p === '/association' ||
@@ -37,11 +40,12 @@ export function MainBottomBar() {
   const pathname = usePathname();
   const active = getActiveDashboardTab(pathname);
 
-  const go = (tab: 'home' | 'scout' | 'association') => {
+  const go = (tab: 'home' | 'trafficScout' | 'eventsScout' | 'association') => {
     if (tab === active) return;
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (tab === 'home') router.replace('/');
-    else if (tab === 'scout') router.replace('/scout');
+    else if (tab === 'trafficScout') router.replace('/scout');
+    else if (tab === 'eventsScout') router.replace('/events-scout');
     else router.replace('/association');
   };
 
@@ -65,10 +69,17 @@ export function MainBottomBar() {
         />
         <View style={styles.divider} />
         <Segment
-          label="Scout"
-          icon="map.fill"
-          active={active === 'scout'}
-          onPress={() => go('scout')}
+          label="Traffic Scout"
+          icon="car.fill"
+          active={active === 'trafficScout'}
+          onPress={() => go('trafficScout')}
+        />
+        <View style={styles.divider} />
+        <Segment
+          label="Events Scout"
+          icon="calendar"
+          active={active === 'eventsScout'}
+          onPress={() => go('eventsScout')}
         />
         <View style={styles.divider} />
         <Segment
@@ -136,7 +147,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: 'rgba(22, 24, 32, 0.95)',
     borderWidth: 1,
-    borderColor: NeoGlass.cardBorder,
+    // Keep nav border neutral (do not inherit cyan card borders)
+    borderColor: NeoGlass.stroke,
   },
   divider: {
     width: StyleSheet.hairlineWidth,

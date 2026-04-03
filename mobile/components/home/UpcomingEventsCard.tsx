@@ -3,33 +3,27 @@ import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { GlassCard } from '@/components/ui/GlassCard';
-import {
-  GLASGOW_FIXTURE_VENUE_ROWS,
-  GLASGOW_GIG_VENUE_ORDER,
-} from '@/lib/events-supabase';
 import type { GlasgowEventBannerRow, GlasgowVenueKey } from '@/types/events';
-import { FontSize, FontWeight, NeoText, Radius, Spacing } from '@/constants/theme';
+import { FontSize, FontWeight, NeoGlass, NeoText, Radius, Spacing } from '@/constants/theme';
 
-const LIGHT_EDGE = 'rgba(255, 255, 255, 0.1)';
-const MOTORWAY_TILE_BG = 'rgba(40, 80, 200, 0.22)';
-const MOTORWAY_TILE_BORDER = 'rgba(140, 180, 255, 0.7)';
-const BRIDGE_ALERT_AMBER = 'rgba(255, 220, 150, 0.95)';
+const LIGHT_EDGE = NeoGlass.cardBorder;
+const TILE_BG = 'rgba(40, 80, 200, 0.22)';
+const TILE_BORDER = 'rgba(140, 180, 255, 0.7)';
+const HIGHLIGHT_TEXT = 'rgba(255, 220, 150, 0.95)';
 
-const GIG_VENUE_SHORT_LABEL: Pick<
-  Record<GlasgowVenueKey, string>,
-  'ovo_hydro' | 'swg3' | 'barrowlands' | 'o2_academy_glasgow'
-> = {
-  ovo_hydro: 'HYDRO',
+const GIG_ORDER: GlasgowVenueKey[] = ['ovo_hydro', 'swg3', 'barrowlands', 'o2_academy_glasgow'];
+const STADIUM_ORDER: GlasgowVenueKey[] = ['celtic_park', 'ibrox', 'partick_thistle', 'hampden'];
+
+const VENUE_LABELS: Record<GlasgowVenueKey, string> = {
+  ovo_hydro: 'OVO Hydro',
   swg3: 'SWG3',
-  barrowlands: 'BARRAS',
-  o2_academy_glasgow: 'THE O2',
+  barrowlands: 'Barrowlands',
+  o2_academy_glasgow: 'The o2 Academy',
+  celtic_park: 'Parkhead',
+  ibrox: 'Ibrox',
+  partick_thistle: 'Firhill',
+  hampden: 'Hampden',
 };
-
-function truncateGigEventTitle(text: string, maxChars = 14): string {
-  const t = text.trim();
-  if (t.length <= maxChars) return t;
-  return `${t.slice(0, maxChars)}…`;
-}
 
 type Props = {
   eventsRows: GlasgowEventBannerRow[];
@@ -44,7 +38,7 @@ export function UpcomingEventsCard({ eventsRows, eventsLoading, eventsError }: P
     return map;
   }, [eventsRows]);
 
-  const formatFixtureDateTime = (startTime: string | null): string => {
+  const formatDateTime = (startTime: string | null): string => {
     if (!startTime) return 'TBC';
     const d = new Date(startTime);
     if (!Number.isFinite(d.getTime())) return 'TBC';
@@ -53,156 +47,86 @@ export function UpcomingEventsCard({ eventsRows, eventsLoading, eventsError }: P
     return `${date} - ${time}`;
   };
 
-  const getFixtureTeams = (
-    ev: GlasgowEventBannerRow | undefined,
-    titleLine: string
-  ): { home: string; away: string } | null => {
-    if (!ev) return null;
-    const h = ev.homeTeam?.trim();
-    const a = ev.awayTeam?.trim();
-    if (h && a) return { home: h, away: a };
-    const parts = titleLine.split(/\s+vs\.?\s+/i);
-    if (parts.length === 2 && parts[0].trim() && parts[1].trim()) {
-      return { home: parts[0].trim(), away: parts[1].trim() };
-    }
-    return null;
+  const getTitle = (ev: GlasgowEventBannerRow | undefined): string => {
+    if (eventsLoading) return 'CHECKING...';
+    if (eventsError) return 'Events unavailable';
+    return ev?.title ?? 'No upcoming events';
   };
 
-  const venueLabels: Record<GlasgowVenueKey, string> = {
-    ovo_hydro: 'OVO Hydro',
-    swg3: 'SWG3',
-    barrowlands: 'Barrowlands',
-    o2_academy_glasgow: 'O2 Academy',
-    celtic_park: 'Parkhead',
-    ibrox: 'Ibrox',
-    partick_thistle: 'Firhill',
-    hampden: 'Hampden',
+  const getWhen = (ev: GlasgowEventBannerRow | undefined): string => {
+    if (eventsLoading) return '...';
+    if (eventsError) return '—';
+    return formatDateTime(ev?.startTime ?? null);
   };
 
-  const renderEventCell = (venueKey: GlasgowVenueKey, layout: 'gig' | 'fixture') => {
+  const renderStackedTile = (venueKey: GlasgowVenueKey) => {
     const ev = eventsByVenueKey.get(venueKey);
-    const title = eventsLoading
-      ? 'CHECKING…'
-      : eventsError
-        ? 'Events unavailable'
-        : ev?.title ?? 'No upcoming events';
-
-    const isGig = layout === 'gig';
-
-    if (isGig) {
-      const gigWhen = eventsLoading
-        ? '...'
-        : eventsError
-          ? '—'
-          : formatFixtureDateTime(ev?.startTime ?? null);
-      const gigTitleLine = truncateGigEventTitle(title);
-
-      return (
-        <View key={venueKey} style={[styles.eventCell, styles.eventCellGig]}>
-          <View style={styles.eventCellGigTop}>
-            <ThemedText style={styles.eventCellGigVenue} numberOfLines={1}>
-              {GIG_VENUE_SHORT_LABEL[venueKey as keyof typeof GIG_VENUE_SHORT_LABEL]}
-            </ThemedText>
-          </View>
-          <View style={styles.eventCellGigMiddle}>
-            <ThemedText style={styles.eventCellGigTitle} numberOfLines={1}>
-              {gigTitleLine}
-            </ThemedText>
-          </View>
-          <View style={styles.eventCellGigBottom}>
-            <ThemedText style={styles.eventCellGigWhen} numberOfLines={1}>
-              {gigWhen}
-            </ThemedText>
-          </View>
-        </View>
-      );
-    }
-
-    const fixtureWhen = eventsLoading
-      ? '...'
-      : eventsError
-        ? '—'
-        : formatFixtureDateTime(ev?.startTime ?? null);
-    const teams = getFixtureTeams(ev, title);
-
     return (
-      <View key={venueKey} style={[styles.eventCell, styles.eventCellFixture]}>
-        <View style={styles.eventCellFixtureTop}>
-          <ThemedText style={styles.eventCellFixtureStadium} numberOfLines={2}>
-            {venueLabels[venueKey]}
-          </ThemedText>
+      <View key={venueKey} style={styles.eventTile}>
+        <View style={styles.eventTileTopRow}>
+          <ThemedText style={styles.eventVenue}>{VENUE_LABELS[venueKey]}</ThemedText>
+          <ThemedText style={styles.eventWhen}>{getWhen(ev)}</ThemedText>
         </View>
-
-        <View style={styles.eventCellFixtureMiddle}>
-          {teams ? (
-            <View style={styles.eventCellFixtureMatchCol}>
-              <ThemedText style={styles.eventCellFixtureTeam} numberOfLines={2}>
-                {teams.home}
-              </ThemedText>
-              <ThemedText style={styles.eventCellFixtureVs}>vs</ThemedText>
-              <ThemedText style={styles.eventCellFixtureTeam} numberOfLines={2}>
-                {teams.away}
-              </ThemedText>
-            </View>
-          ) : (
-            <ThemedText style={styles.eventCellFixtureTitleFallback} numberOfLines={3}>
-              {title}
-            </ThemedText>
-          )}
-        </View>
-
-        <View style={styles.eventCellFixtureBottom}>
-          <ThemedText style={styles.eventCellFixtureWhen} numberOfLines={2}>
-            {fixtureWhen}
-          </ThemedText>
-        </View>
+        <ThemedText style={styles.eventTitle}>{getTitle(ev)}</ThemedText>
       </View>
     );
   };
 
   return (
-    <GlassCard
-      elevated
-      borderRadius={Radius.lg}
-      borderColor={LIGHT_EDGE}
-      contentStyle={styles.eventsCardContent}
-      sleek
-      style={styles.eventsCard}
-    >
-      <View style={styles.alertsHeaderRow}>
-        <View style={styles.alertsHeaderLine} />
-        <ThemedText style={styles.alertsHeaderText}>Upcoming Events</ThemedText>
-        <View style={styles.alertsHeaderLine} />
-      </View>
-
-      <View style={styles.eventsTilesStack}>
-        <View style={styles.eventsGigRow}>
-          {GLASGOW_GIG_VENUE_ORDER.map((venueKey) => renderEventCell(venueKey, 'gig'))}
+    <View style={styles.stack}>
+      <GlassCard
+        elevated
+        borderRadius={Radius.lg}
+        borderColor={LIGHT_EDGE}
+        contentStyle={styles.panelContent}
+        sleek
+        style={styles.panel}
+      >
+        <View style={styles.headerRow}>
+          <View style={styles.headerLine} />
+          <ThemedText style={styles.headerText}>Upcoming Venue Events</ThemedText>
+          <View style={styles.headerLine} />
         </View>
-
-        <View style={styles.eventsFixtureGrid}>
-          {GLASGOW_FIXTURE_VENUE_ROWS.map((rowKeys, rowIndex) => (
-            <View key={`fixture-row-${rowIndex}`} style={styles.eventsFixtureRow}>
-              {rowKeys.map((venueKey) => renderEventCell(venueKey, 'fixture'))}
-            </View>
-          ))}
+        <View style={styles.tilesStack}>
+          {GIG_ORDER.map((venueKey) => renderStackedTile(venueKey))}
         </View>
-      </View>
-    </GlassCard>
+      </GlassCard>
+
+      <GlassCard
+        elevated
+        borderRadius={Radius.lg}
+        borderColor={LIGHT_EDGE}
+        contentStyle={styles.panelContent}
+        sleek
+        style={styles.panel}
+      >
+        <View style={styles.headerRow}>
+          <View style={styles.headerLine} />
+          <ThemedText style={styles.headerText}>Upcoming Stadium Events</ThemedText>
+          <View style={styles.headerLine} />
+        </View>
+        <View style={styles.tilesStack}>
+          {STADIUM_ORDER.map((venueKey) => renderStackedTile(venueKey))}
+        </View>
+      </GlassCard>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  eventsCard: {
-    marginHorizontal: Spacing.md,
-    marginTop: Spacing.sm,
+  stack: {
+    gap: Spacing.sm,
   },
-  eventsCardContent: {
+  panel: {
+    marginHorizontal: Spacing.md,
+    marginTop: 0,
+  },
+  panelContent: {
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.lg,
     gap: Spacing.sm,
   },
-  alertsHeaderRow: {
+  headerRow: {
     marginTop: Spacing.xs,
     marginBottom: Spacing.sm,
     flexDirection: 'row',
@@ -210,155 +134,55 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     justifyContent: 'center',
   },
-  alertsHeaderLine: {
+  headerLine: {
     flex: 1,
     height: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.12)',
     maxWidth: 72,
   },
-  alertsHeaderText: {
+  headerText: {
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,
     color: 'rgba(230, 237, 255, 0.85)',
     letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
-  eventsTilesStack: {
+  tilesStack: {
     gap: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
   },
-  eventsGigRow: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: Spacing.xs,
-  },
-  eventsFixtureGrid: {
-    gap: Spacing.xs,
-  },
-  eventsFixtureRow: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: Spacing.xs,
-  },
-  eventCell: {
-    flex: 1,
-    minWidth: 0,
+  eventTile: {
+    width: '100%',
     borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: MOTORWAY_TILE_BORDER,
-    backgroundColor: MOTORWAY_TILE_BG,
-  },
-  eventCellGig: {
-    alignItems: 'stretch',
-    flex: 1,
-    justifyContent: 'space-between',
+    borderColor: TILE_BORDER,
+    backgroundColor: TILE_BG,
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.md,
+    gap: Spacing.xs,
   },
-  eventCellGigTop: {
-    width: '100%',
+  eventTileTopRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.md,
   },
-  eventCellGigMiddle: {
-    flex: 1,
-    width: '100%',
-    minHeight: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: Spacing.xs,
-  },
-  eventCellGigBottom: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  eventCellGigVenue: {
+  eventVenue: {
     fontSize: FontSize.body,
     fontWeight: FontWeight.semibold,
     color: '#E5EDFF',
     letterSpacing: 0.2,
-    marginBottom: Spacing.xs,
-    textAlign: 'center',
-    width: '100%',
-    textDecorationLine: 'underline',
   },
-  eventCellGigTitle: {
-    fontSize: 10,
-    fontWeight: FontWeight.medium,
-    color: BRIDGE_ALERT_AMBER,
-    textAlign: 'center',
-    width: '100%',
-  },
-  eventCellGigWhen: {
-    marginTop: 2,
-    fontSize: 10,
-    fontWeight: FontWeight.medium,
-    color: NeoText.muted,
-    textAlign: 'center',
-    width: '100%',
-  },
-  eventCellFixture: {
-    alignItems: 'stretch',
-    flex: 1,
-    justifyContent: 'space-between',
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.md,
-  },
-  eventCellFixtureTop: {
-    width: '100%',
-  },
-  eventCellFixtureMiddle: {
-    flex: 1,
-    width: '100%',
-    minHeight: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: Spacing.xs,
-  },
-  eventCellFixtureBottom: {
-    width: '100%',
-  },
-  eventCellFixtureStadium: {
-    fontSize: FontSize.body,
-    fontWeight: FontWeight.semibold,
-    color: '#E5EDFF',
-    letterSpacing: 0.2,
-    marginBottom: Spacing.xs,
-    textAlign: 'center',
-    width: '100%',
-    textDecorationLine: 'underline',
-    textTransform: 'uppercase',
-  },
-  eventCellFixtureMatchCol: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    gap: 2,
-  },
-  eventCellFixtureTeam: {
+  eventWhen: {
     fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
-    color: BRIDGE_ALERT_AMBER,
-    textAlign: 'center',
-    width: '100%',
-  },
-  eventCellFixtureVs: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
-    color: BRIDGE_ALERT_AMBER,
-    textAlign: 'center',
-    textTransform: 'lowercase',
-  },
-  eventCellFixtureTitleFallback: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
-    color: BRIDGE_ALERT_AMBER,
-    textAlign: 'center',
-    width: '100%',
-  },
-  eventCellFixtureWhen: {
-    marginTop: 2,
-    fontSize: FontSize.xs,
     fontWeight: FontWeight.medium,
-    color: NeoText.muted,
+    color: '#FFFFFF',
+  },
+  eventTitle: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium,
+    color: HIGHLIGHT_TEXT,
+    lineHeight: 20,
     textAlign: 'center',
     width: '100%',
   },

@@ -21,6 +21,8 @@ export interface MemberProfile {
   plateExpiry: string;
   /** Club membership number (may come from subscription later) */
   membershipNumber: string;
+  /** Start date of paid subscription (YYYY-MM-DD). Used as e-card "Valid From". */
+  subscriptionStartDate: string;
   /** Membership status for display; later derived from subscription */
   membershipStatus: 'active' | 'expired' | 'pending';
   /** Membership expiry (YYYY-MM-DD); later from subscription */
@@ -37,6 +39,7 @@ export const emptyMemberProfile = (): MemberProfile => ({
   plateNumber: '',
   plateExpiry: '',
   membershipNumber: '',
+  subscriptionStartDate: '',
   membershipStatus: 'pending',
   membershipExpiry: '',
 });
@@ -47,4 +50,14 @@ export function formatDateForDisplay(isoDate: string): string {
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const mi = parseInt(m ?? '0', 10) - 1;
   return `${d ?? ''} ${months[mi] ?? m} ${y ?? ''}`;
+}
+
+/** Date (same as {@link formatDateForDisplay}) plus local 24h time from a full ISO timestamp. */
+export function formatDateTimeLocalForDisplay(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  const datePart = formatDateForDisplay(iso.slice(0, 10));
+  const h = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${datePart}, ${h}:${min}`;
 }

@@ -98,13 +98,16 @@ function wall12To24(hour: number, minute: number, ap: string): { h: number; m: n
 }
 
 /**
- * "The bridge will be closed … Friday 20 March 2026 … 8:15am - 9:15am"
+ * Council copy varies: date may precede "will be closed" (e.g. "Sat 28 March 2026 … will be closed …").
+ * Times may use dots (5.55am) and the word "to" between ends (not only a dash).
  */
 function parseWillBeClosedWindows(core: string): ClosureWindow[] {
   const idx = core.search(/\bwill\s+be\s+closed\b/i);
   if (idx < 0) return [];
 
-  const segment = core.slice(idx, idx + 2500);
+  // Include ~220 chars before the phrase so a leading "Saturday 28 March 2026" is in scope.
+  const segmentStart = Math.max(0, idx - 220);
+  const segment = core.slice(segmentStart, idx + 2500);
   const dateRe =
     /(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})|(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/i;
   const dm = segment.match(dateRe);
@@ -116,8 +119,9 @@ function parseWillBeClosedWindows(core: string): ClosureWindow[] {
   const month = MONTHS[monName];
   if (!day || !month || !year) return [];
 
+  // 8:15am - 9:15am | 8.15am to 7.45am | 5.55am to 7.45am (dots + "to" are common on the council site)
   const timeRe =
-    /(\d{1,2})[.:](\d{2})\s*(am|pm)\s*[-–—]\s*(\d{1,2})[.:](\d{2})\s*(am|pm)/i;
+    /(\d{1,2})[.:](\d{2})\s*(am|pm)\s*(?:[-–—]|\s+to\s+)\s*(\d{1,2})[.:](\d{2})\s*(am|pm)/i;
   const tm = segment.match(timeRe);
   if (!tm) return [];
 

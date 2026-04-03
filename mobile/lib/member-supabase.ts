@@ -14,6 +14,7 @@ type MemberRow = {
   plate_number: string | null;
   plate_expiry: string | null;
   membership_number: string | null;
+  subscription_started_at: string | null;
   membership_status: string | null;
   membership_expiry: string | null;
   membership_source: string | null;
@@ -32,11 +33,18 @@ export type MemberStatus = {
 };
 
 const MEMBER_COLUMNS =
-  'name, badge_number, badge_expiry, vehicle_registration, vehicle_make, vehicle_model, plate_number, plate_expiry, membership_number, membership_status, membership_expiry, is_chat_moderator, is_admin';
+  'name, badge_number, badge_expiry, vehicle_registration, vehicle_make, vehicle_model, plate_number, plate_expiry, membership_number, subscription_started_at, membership_status, membership_expiry, is_chat_moderator, is_admin';
 
-/** Active = membership_status === 'active'. All legacy / subscription logic is handled server-side. */
+function normalizeMembershipStatus(raw: string | null | undefined): MemberProfile['membershipStatus'] {
+  const s = (raw ?? '').trim().toLowerCase();
+  if (s === 'active') return 'active';
+  if (s === 'expired') return 'expired';
+  return 'pending';
+}
+
+/** Active = membership_status === 'active' (case-insensitive). */
 export function isMemberActive(row: Pick<MemberRow, 'membership_status'>): boolean {
-  return row.membership_status === 'active';
+  return normalizeMembershipStatus(row.membership_status) === 'active';
 }
 
 function dateToIso(d: string | null): string {
@@ -46,6 +54,7 @@ function dateToIso(d: string | null): string {
 
 function rowToProfile(row: MemberRow | null): MemberProfile {
   if (!row) return emptyMemberProfile();
+  const membershipStatus = normalizeMembershipStatus(row.membership_status);
   return {
     name: row.name ?? '',
     badgeNumber: row.badge_number ?? '',
@@ -56,11 +65,16 @@ function rowToProfile(row: MemberRow | null): MemberProfile {
     plateNumber: row.plate_number ?? '',
     plateExpiry: dateToIso(row.plate_expiry),
     membershipNumber: row.membership_number ?? '',
-    membershipStatus: (row.membership_status === 'active' || row.membership_status === 'expired' ? row.membership_status : 'pending') as MemberProfile['membershipStatus'],
+    subscriptionStartDate: dateToIso(row.subscription_started_at),
+    membershipStatus,
     membershipExpiry: dateToIso(row.membership_expiry),
   };
 }
 
+/**
+ * Fields the app may update from Profile. Never includes membership_status, is_admin,
+ * or subscription_started_at — those are controlled in Supabase/admin/billing flows.
+ */
 function profileToRow(profile: MemberProfile): Partial<MemberRow> {
   return {
     name: profile.name || '',
@@ -72,7 +86,6 @@ function profileToRow(profile: MemberProfile): Partial<MemberRow> {
     plate_number: profile.plateNumber || '',
     plate_expiry: profile.plateExpiry || null,
     membership_number: profile.membershipNumber || '',
-    membership_status: profile.membershipStatus || 'pending',
     membership_expiry: profile.membershipExpiry || null,
   };
 }
@@ -104,20 +117,33 @@ export async function fetchMemberAdminFlag(
   return { isAdmin: Boolean(data?.is_admin), error: null };
 }
 
+export type MemberWithStatusResult =
+  | { ok: true; profile: MemberProfile; status: MemberStatus }
+  /** `error` set when PostgREST failed; both null when RLS returned no visible row (wrong id or missing row). */
+  | { ok: false; error: Error | null };
+
 export async function getMemberWithStatus(
   supabase: SupabaseClient,
   userId: string
-): Promise<{ profile: MemberProfile; status: MemberStatus } | null> {
+): Promise<MemberWithStatusResult> {
+  // Ensure the client has attached the session JWT before RLS-protected selects (Expo cold start).
+  await supabase.auth.getSession();
   const { data, error } = await supabase
     .from('members')
     .select(MEMBER_COLUMNS)
     .eq('id', userId)
-    .single();
+    .maybeSingle();
 
-  if (error || !data) return null;
+  if (error) {
+    return { ok: false, error };
+  }
+  if (!data) {
+    return { ok: false, error: null };
+  }
   const row = data as MemberRow;
   const profile = rowToProfile(row);
   return {
+    ok: true,
     profile,
     status: {
       isActive: isMemberActive(row),
@@ -136,7 +162,7 @@ export async function getMemberFromSupabase(
   userId: string
 ): Promise<MemberProfile | null> {
   const result = await getMemberWithStatus(supabase, userId);
-  return result?.profile ?? null;
+  return result.ok ? result.profile : null;
 }
 
 /**

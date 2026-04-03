@@ -6,10 +6,11 @@ import { StyleSheet, View } from 'react-native';
 import { CmsPostTile } from '@/components/CmsPostTile';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { GlassCard } from '@/components/ui/GlassCard';
 import { fetchFrontPageAnnouncementPosts } from '@/lib/cms-supabase';
 import { supabase } from '@/lib/supabase';
 import type { CmsPost } from '@/types/cms';
-import { FontSize, FontWeight, NeoGlass, NeoText, Spacing } from '@/constants/theme';
+import { FontSize, FontWeight, NeoGlass, Radius, Spacing } from '@/constants/theme';
 
 /**
  * Home dashboard: news articles flagged `is_front_page_announcement` (readable by all signed-in users).
@@ -44,26 +45,36 @@ export function FrontPageAnnouncementsSection() {
   }
 
   return (
-    <ThemedView style={styles.section}>
+    <GlassCard
+      elevated
+      borderRadius={Radius.lg}
+      borderColor={NeoGlass.cardBorder}
+      contentStyle={styles.cardContent}
+      sleek
+      style={styles.card}
+    >
       <View style={styles.headerRow}>
         <View style={styles.headerLine} />
         <ThemedText style={styles.headerText}>Announcements</ThemedText>
         <View style={styles.headerLine} />
       </View>
-      <ThemedText style={styles.subtitle}>Important updates for every member</ThemedText>
-      <View style={styles.list}>
+      <ThemedView style={styles.list}>
         {posts.map((post) => (
           <CmsPostTile key={post.id} post={post} onPress={() => router.push(`/news/${post.id}`)} />
         ))}
-      </View>
-    </ThemedView>
+      </ThemedView>
+    </GlassCard>
   );
 }
 
 const styles = StyleSheet.create({
-  section: {
-    gap: Spacing.sm,
+  card: {
     marginHorizontal: Spacing.md,
+  },
+  cardContent: {
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.sm,
   },
   headerRow: {
     flexDirection: 'row',
@@ -79,17 +90,11 @@ const styles = StyleSheet.create({
     maxWidth: 72,
   },
   headerText: {
-    fontSize: FontSize.sm,
+    fontSize: FontSize.body,
     fontWeight: FontWeight.semibold,
     color: 'rgba(230, 237, 255, 0.85)',
     letterSpacing: 1.2,
     textTransform: 'uppercase',
-  },
-  subtitle: {
-    fontSize: FontSize.xs,
-    color: NeoText.muted,
-    textAlign: 'center',
-    marginBottom: Spacing.sm,
   },
   list: {
     gap: Spacing.md,

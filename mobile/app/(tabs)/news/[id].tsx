@@ -1,28 +1,33 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, TouchableOpacity } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ArticleDetailContent } from '@/components/ArticleDetailContent';
 import { AssociationMembershipGate } from '@/components/AssociationMembershipGate';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useNews } from '@/context/NewsContext';
 import { fetchCmsPostById } from '@/lib/cms-supabase';
 import { supabase } from '@/lib/supabase';
 import type { CmsPost } from '@/types/cms';
+import { Spacing } from '@/constants/theme';
 
 function NewsDetailContent({ post }: { post: CmsPost }) {
   const router = useRouter();
   return (
-    <ParallaxScrollView headerBackgroundColor={{ light: '#f4f4f4', dark: '#121212' }} headerImage={null}>
-      <ThemedView style={styles.container}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backRow}>
-          <ThemedText type="link">← Back</ThemedText>
-        </TouchableOpacity>
-        <ArticleDetailContent post={post} />
-      </ThemedView>
-    </ParallaxScrollView>
+    <View style={styles.screen}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
+        <ThemedView style={styles.inner}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backRow}>
+            <ThemedText type="link">← Back</ThemedText>
+          </TouchableOpacity>
+          <ArticleDetailContent post={post} />
+        </ThemedView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -59,49 +64,48 @@ function NewsDetailCoordinator() {
 
   if (!id) {
     return (
-      <ParallaxScrollView headerBackgroundColor={{ light: '#f4f4f4', dark: '#121212' }} headerImage={null}>
-        <ThemedView style={styles.container}>
+      <View style={styles.screen}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
           <ThemedText>Post not found.</ThemedText>
           <TouchableOpacity onPress={() => router.back()}>
             <ThemedText type="link">Go back</ThemedText>
           </TouchableOpacity>
-        </ThemedView>
-      </ParallaxScrollView>
+        </ScrollView>
+      </View>
     );
   }
 
   if (post === undefined) {
     return (
-      <ParallaxScrollView headerBackgroundColor={{ light: '#f4f4f4', dark: '#121212' }} headerImage={null}>
-        <ThemedView style={styles.container}>
+      <View style={styles.screen}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
           <ThemedText>Loading…</ThemedText>
-        </ThemedView>
-      </ParallaxScrollView>
+        </ScrollView>
+      </View>
     );
   }
 
   if (!post) {
     return (
-      <ParallaxScrollView headerBackgroundColor={{ light: '#f4f4f4', dark: '#121212' }} headerImage={null}>
-        <ThemedView style={styles.container}>
+      <View style={styles.screen}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
           <ThemedText>Post not found.</ThemedText>
           <TouchableOpacity onPress={() => router.back()}>
             <ThemedText type="link">Go back</ThemedText>
           </TouchableOpacity>
-        </ThemedView>
-      </ParallaxScrollView>
+        </ScrollView>
+      </View>
     );
   }
 
-  const isOpenToAllMembers =
-    post.type === 'news' && post.isFrontPageAnnouncement;
+  const isOpenToAllMembers = post.type === 'news' && post.isFrontPageAnnouncement;
 
   if (isOpenToAllMembers) {
     return <NewsDetailContent post={post} />;
   }
 
   return (
-    <AssociationMembershipGate title="News">
+    <AssociationMembershipGate title="News and Updates">
       <NewsDetailContent post={post} />
     </AssociationMembershipGate>
   );
@@ -112,6 +116,13 @@ export default function NewsDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 12 },
-  backRow: { marginBottom: 4 },
+  screen: { flex: 1 },
+  scroll: { flex: 1 },
+  scrollContent: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.xxl,
+  },
+  inner: { gap: 12 },
+  backRow: { alignSelf: 'flex-start' },
 });

@@ -26,7 +26,7 @@ const ASSOCIATION_MENU: MenuGridItem[] = [
   {
     route: '/casework',
     label: 'Casework and Support',
-    icon: 'doc.text.magnifyingglass',
+    icon: 'briefcase.fill',
     premium: true,
     description: 'Request caseworker support for licensing and enforcement issues.',
   },

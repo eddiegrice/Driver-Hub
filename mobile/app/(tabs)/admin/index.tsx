@@ -7,13 +7,14 @@ import { AdminAreaHeader } from '@/components/admin/AdminAreaHeader';
 import { ThemedText } from '@/components/themed-text';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { HUB_SCROLL_BOTTOM_GAP } from '@/constants/mainBottomBar';
-import { FontSize, FontWeight, NeoText, Radius, Spacing } from '@/constants/theme';
+import { FontSize, FontWeight, NeoGlass, NeoText, Radius, Spacing } from '@/constants/theme';
 
-const LIGHT_EDGE = 'rgba(255, 255, 255, 0.1)';
+const LIGHT_EDGE = NeoGlass.cardBorder;
 
-const ADMIN_TILES: { title: string; href: Href }[] = [
-  { title: 'News System', href: '/admin/news' as Href },
-  { title: 'Casework System', href: '/admin/casework' },
+const ADMIN_TILES: { title: string; href: Href; withAnchor?: boolean }[] = [
+  { title: 'News System', href: '/admin/news' as Href, withAnchor: true },
+  { title: 'Library System', href: '/admin/library' as Href, withAnchor: true },
+  { title: 'Casework System', href: '/admin/casework' as Href },
   { title: 'Polls and Surveys System', href: '/admin/polls' },
   { title: 'Membership System', href: '/admin/membership' },
 ];
@@ -36,7 +37,11 @@ export default function AdminDashboardScreen() {
         {ADMIN_TILES.map((tile) => (
           <Pressable
             key={String(tile.href)}
-            onPress={() => router.push(tile.href)}
+            onPress={() =>
+              tile.withAnchor
+                ? router.push(tile.href, { withAnchor: true })
+                : router.push(tile.href)
+            }
             style={({ pressed }) => [styles.tilePress, pressed && styles.tilePressed]}
             accessibilityRole="button"
             accessibilityLabel={tile.title}

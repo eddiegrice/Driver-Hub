@@ -1,119 +1,261 @@
-import React, { useCallback, createContext, useContext, useEffect, useState } from 'react';
+import React, { useCallback, createContext, useContext, useEffect, useMemo, useState } from 'react';
 
+import { usePathname } from 'expo-router';
+
+import { useAuth } from '@/context/AuthContext';
+import { useMember } from '@/context/MemberContext';
 import {
-  addTicket as addTicketStorage,
-  addMessageToTicket,
-  getStoredTickets,
-  setStoredTickets,
-  updateTicket as updateTicketStorage,
-} from '@/lib/casework-storage';
-import type {
-  CaseworkMessage,
-  CaseworkStatus,
-  CaseworkTicket,
-} from '@/types/casework';
+  addCaseworkReplyWithOptionalAttachments,
+  createAdminCaseForMember,
+  createAdminInternalCase,
+  createMemberCaseworkCase,
+  fetchCaseworkCasesForAdmin,
+  fetchCaseworkCasesForMember,
+  refreshCaseworkTicket,
+  requestCaseworkClosure,
+  updateCaseworkCaseStatus,
+} from '@/lib/casework-supabase';
+import { supabase } from '@/lib/supabase';
+import type { CaseworkStatus, CaseworkTicket, CaseworkType } from '@/types/casework';
 
-function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-}
+type CreateTicketInput = {
+  type: CaseworkType;
+  subject: string;
+  message: string;
+  attachments: { uri: string; name?: string; mimeType?: string }[];
+};
 
 type CaseworkContextValue = {
   tickets: CaseworkTicket[];
   isLoading: boolean;
+  remoteReady: boolean;
   refreshTickets: () => Promise<void>;
+  refreshTicket: (id: string) => Promise<void>;
   getTicket: (id: string) => CaseworkTicket | undefined;
-  createTicket: (ticket: Omit<CaseworkTicket, 'id' | 'createdAt' | 'updatedAt'>) => Promise<CaseworkTicket>;
-  addMessage: (ticketId: string, sender: string, text: string) => Promise<void>;
-  setTicketStatus: (ticketId: string, status: CaseworkStatus) => Promise<void>;
+  createTicket: (input: CreateTicketInput) => Promise<CaseworkTicket | null>;
+  addReply: (
+    ticketId: string,
+    text: string,
+    attachments?: { uri: string; name?: string; mimeType?: string }[]
+  ) => Promise<{ error: Error | null }>;
+  requestClosure: (ticketId: string) => Promise<{ error: Error | null }>;
+  setTicketStatus: (ticketId: string, status: CaseworkStatus) => Promise<{ error: Error | null }>;
+  createInternalCase: (input: {
+    title: string;
+    casenotes: string;
+    status: CaseworkStatus;
+  }) => Promise<CaseworkTicket | null>;
+  createCaseForMember: (
+    targetMemberId: string,
+    input: CreateTicketInput
+  ) => Promise<CaseworkTicket | null>;
 };
 
 const CaseworkContext = createContext<CaseworkContextValue | null>(null);
 
 export function CaseworkProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const { memberStatus } = useMember();
+  const pathname = usePathname() ?? '';
+  const adminCaseworkRoute =
+    memberStatus.isAdmin && pathname.startsWith('/admin/casework');
   const [tickets, setTickets] = useState<CaseworkTicket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const remoteReady = Boolean(supabase && user?.id);
+
   const refreshTickets = useCallback(async () => {
+    if (!supabase || !user?.id) {
+      setTickets([]);
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
-    const list = await getStoredTickets();
-    setTickets(list);
-    setIsLoading(false);
-  }, []);
+    try {
+      if (adminCaseworkRoute) {
+        const { tickets: list, error } = await fetchCaseworkCasesForAdmin(supabase);
+        if (!error) setTickets(list);
+      } else {
+        const { tickets: list, error } = await fetchCaseworkCasesForMember(supabase, user.id);
+        if (!error) setTickets(list);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.id, adminCaseworkRoute]);
 
   useEffect(() => {
     refreshTickets();
   }, [refreshTickets]);
+
+  useEffect(() => {
+    if (!supabase || !user?.id) return;
+
+    const channel = supabase
+      .channel('casework-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'casework_cases' },
+        () => {
+          void refreshTickets();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'casework_messages' },
+        () => {
+          void refreshTickets();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'casework_attachments' },
+        () => {
+          void refreshTickets();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (supabase) void supabase.removeChannel(channel);
+    };
+  }, [supabase, user?.id, refreshTickets]);
 
   const getTicket = useCallback(
     (id: string) => tickets.find((t) => t.id === id),
     [tickets]
   );
 
-  const createTicket = useCallback(
-    async (
-      t: Omit<CaseworkTicket, 'id' | 'createdAt' | 'updatedAt'>
-    ): Promise<CaseworkTicket> => {
-      const now = new Date().toISOString();
-      const id = `ticket-${generateId()}`;
-      const messages = (t.messages ?? []).map((m) => ({ ...m, ticketId: id }));
-      const ticket: CaseworkTicket = {
-        ...t,
-        id,
-        createdAt: now,
-        updatedAt: now,
-        messages,
-        attachments: t.attachments ?? [],
-      };
-      await addTicketStorage(ticket);
-      setTickets((prev) => [ticket, ...prev]);
-      return ticket;
+  const refreshTicket = useCallback(
+    async (id: string) => {
+      if (!supabase) return;
+      const { ticket, error } = await refreshCaseworkTicket(supabase, id);
+      if (error || !ticket) return;
+      setTickets((prev) => {
+        const i = prev.findIndex((t) => t.id === id);
+        if (i < 0) return [ticket, ...prev];
+        const next = [...prev];
+        next[i] = ticket;
+        return next;
+      });
     },
     []
   );
 
-  const addMessage = useCallback(async (ticketId: string, sender: string, text: string) => {
-    const msg: CaseworkMessage = {
-      id: `msg-${generateId()}`,
-      ticketId,
-      sender,
-      text,
-      createdAt: new Date().toISOString(),
-    };
-    await addMessageToTicket(ticketId, msg);
-    setTickets((prev) =>
-      prev.map((t) =>
-        t.id === ticketId
-          ? { ...t, messages: [...(t.messages ?? []), msg], updatedAt: msg.createdAt }
-          : t
-      )
-    );
-  }, []);
-
-  const setTicketStatus = useCallback(async (ticketId: string, status: CaseworkStatus) => {
-    const updated = await updateTicketStorage(ticketId, {
-      status,
-      updatedAt: new Date().toISOString(),
-    });
-    if (updated) {
-      setTickets((prev) =>
-        prev.map((t) => (t.id === ticketId ? { ...t, status, updatedAt: updated.updatedAt } : t))
-      );
-    }
-  }, []);
-
-  const value: CaseworkContextValue = {
-    tickets,
-    isLoading,
-    refreshTickets,
-    getTicket,
-    createTicket,
-    addMessage,
-    setTicketStatus,
-  };
-
-  return (
-    <CaseworkContext.Provider value={value}>{children}</CaseworkContext.Provider>
+  const createTicket = useCallback(
+    async (input: CreateTicketInput): Promise<CaseworkTicket | null> => {
+      if (!supabase || !user?.id) return null;
+      const { ticket, error } = await createMemberCaseworkCase(supabase, user.id, input);
+      if (error || !ticket) return null;
+      setTickets((prev) => [ticket, ...prev.filter((t) => t.id !== ticket.id)]);
+      return ticket;
+    },
+    [user?.id]
   );
+
+  const addReply = useCallback(
+    async (
+      ticketId: string,
+      text: string,
+      attachments?: { uri: string; name?: string; mimeType?: string }[]
+    ) => {
+      if (!supabase || !user?.id) return { error: new Error('Not signed in') };
+      const trimmed = text.trim();
+      const atts = attachments ?? [];
+      if (!trimmed && atts.length === 0) return { error: new Error('Empty') };
+      const body = trimmed || '(Attachment)';
+      const { error } = await addCaseworkReplyWithOptionalAttachments(
+        supabase,
+        ticketId,
+        user.id,
+        body,
+        atts
+      );
+      if (!error) await refreshTickets();
+      return { error };
+    },
+    [user?.id, refreshTickets]
+  );
+
+  const requestClosure = useCallback(
+    async (ticketId: string) => {
+      if (!supabase) return { error: new Error('No supabase') };
+      const { error } = await requestCaseworkClosure(supabase, ticketId);
+      if (!error) await refreshTickets();
+      return { error };
+    },
+    [refreshTickets]
+  );
+
+  const setTicketStatus = useCallback(
+    async (ticketId: string, status: CaseworkStatus) => {
+      if (!supabase) return { error: new Error('No supabase') };
+      const { error } = await updateCaseworkCaseStatus(supabase, ticketId, status);
+      if (!error) await refreshTickets();
+      return { error };
+    },
+    [refreshTickets]
+  );
+
+  const createInternalCase = useCallback(
+    async (input: { title: string; casenotes: string; status: CaseworkStatus }) => {
+      if (!supabase || !user?.id) return null;
+      const { ticket, error } = await createAdminInternalCase(supabase, user.id, input);
+      if (error || !ticket) return null;
+      setTickets((prev) => [ticket, ...prev.filter((t) => t.id !== ticket.id)]);
+      return ticket;
+    },
+    [user?.id]
+  );
+
+  const createCaseForMember = useCallback(
+    async (targetMemberId: string, input: CreateTicketInput) => {
+      if (!supabase || !user?.id) return null;
+      const { ticket, error } = await createAdminCaseForMember(
+        supabase,
+        user.id,
+        targetMemberId,
+        input
+      );
+      if (error || !ticket) return null;
+      setTickets((prev) => [ticket, ...prev.filter((t) => t.id !== ticket.id)]);
+      return ticket;
+    },
+    [user?.id]
+  );
+
+  const value = useMemo(
+    (): CaseworkContextValue => ({
+      tickets,
+      isLoading,
+      remoteReady,
+      refreshTickets,
+      refreshTicket,
+      getTicket,
+      createTicket,
+      addReply,
+      requestClosure,
+      setTicketStatus,
+      createInternalCase,
+      createCaseForMember,
+    }),
+    [
+      tickets,
+      isLoading,
+      remoteReady,
+      refreshTickets,
+      refreshTicket,
+      getTicket,
+      createTicket,
+      addReply,
+      requestClosure,
+      setTicketStatus,
+      createInternalCase,
+      createCaseForMember,
+    ]
+  );
+
+  return <CaseworkContext.Provider value={value}>{children}</CaseworkContext.Provider>;
 }
 
 export function useCasework(): CaseworkContextValue {

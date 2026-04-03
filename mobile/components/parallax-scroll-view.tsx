@@ -1,8 +1,10 @@
 import type { PropsWithChildren, ReactElement } from 'react';
+import type { ViewStyle } from 'react-native';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedView } from '@/components/themed-view';
+import { scrollContentGutter } from '@/constants/scrollLayout';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { Spacing } from '@/constants/theme';
@@ -14,6 +16,8 @@ type Props = PropsWithChildren<{
   headerBackgroundColor: { dark: string; light: string };
   /** When headerImage is null, header is 0 by default so content starts at top. Pass a number to reserve space. */
   headerHeight?: number;
+  /** Merged after default scroll gutters (e.g. extra bottom inset). */
+  contentStyle?: ViewStyle;
 }>;
 
 export default function ParallaxScrollView({
@@ -21,6 +25,7 @@ export default function ParallaxScrollView({
   headerImage,
   headerBackgroundColor,
   headerHeight,
+  contentStyle,
 }: Props) {
   const backgroundColor = useThemeColor({}, 'background');
   const colorScheme = useColorScheme() ?? 'light';
@@ -42,7 +47,7 @@ export default function ParallaxScrollView({
             {headerImage}
           </View>
         )}
-        <ThemedView style={styles.content}>{children}</ThemedView>
+        <ThemedView style={[styles.content, contentStyle]}>{children}</ThemedView>
       </ScrollView>
     </>
   );
@@ -57,8 +62,8 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: Spacing.xxxl,
     gap: Spacing.lg,
     overflow: 'hidden',
+    ...scrollContentGutter,
   },
 });

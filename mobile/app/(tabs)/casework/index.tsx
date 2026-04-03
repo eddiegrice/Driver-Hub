@@ -1,27 +1,30 @@
 import { useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { AssociationDashboardBackLink } from '@/components/AssociationDashboardBackLink';
 import { TabScreenHeader } from '@/components/TabScreenHeader';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { AssociationMembershipGate } from '@/components/AssociationMembershipGate';
-import { Card } from '@/components/ui/Card';
-import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { GlassCard } from '@/components/ui/GlassCard';
 import { useCasework } from '@/context/CaseworkContext';
-import { FontSize, Spacing } from '@/constants/theme';
+import { FontSize, FontWeight, NeoText, Radius, Spacing } from '@/constants/theme';
 import { statusLabel } from '@/types/casework';
 import { formatDateForDisplay } from '@/types/member';
 
+const CYAN_BTN = '#00CCFF';
+const TILE_BORDER = 'rgba(140, 180, 255, 0.7)';
+const TILE_BG = 'rgba(40, 80, 200, 0.18)';
+
 function CaseworkListInner() {
   const router = useRouter();
-  const { tickets, isLoading } = useCasework();
+  const { tickets, isLoading, remoteReady } = useCasework();
 
   if (isLoading) {
     return (
       <View style={styles.screen}>
         <AssociationDashboardBackLink />
-        <TabScreenHeader title="Casework" />
+        <TabScreenHeader title="Casework and Support" />
         <ThemedView style={styles.centered}>
           <ThemedText>Loading…</ThemedText>
         </ThemedView>
@@ -32,18 +35,20 @@ function CaseworkListInner() {
   return (
     <View style={styles.screen}>
       <AssociationDashboardBackLink />
-      <TabScreenHeader title="Casework" />
+      <TabScreenHeader title="Casework and Support" />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <ThemedView style={styles.container}>
-          <ThemedText style={styles.helperText}>
-            Open a new request or tap one to view messages and status.
-          </ThemedText>
+          {!remoteReady ? (
+            <ThemedText style={styles.helperText}>
+              Sign into your account to load casework.
+            </ThemedText>
+          ) : null}
 
-          <PrimaryButton
-            title="New request"
-            onPress={() => router.push('/casework/new')}
-            fullWidth
-          />
+          <Pressable
+            style={({ pressed }) => [styles.newRequestBtn, pressed && styles.newRequestBtnPressed]}
+            onPress={() => router.push('/casework/new')}>
+            <ThemedText style={styles.newRequestBtnText}>New request</ThemedText>
+          </Pressable>
 
           {tickets.length === 0 ? (
             <ThemedText style={styles.empty}>No requests yet.</ThemedText>
@@ -54,13 +59,27 @@ function CaseworkListInner() {
                   key={t.id}
                   onPress={() => router.push(`/casework/${t.id}`)}
                   activeOpacity={0.8}>
-                  <Card accent elevated style={styles.card}>
-                    <ThemedText type="defaultSemiBold">{t.type}</ThemedText>
-                    <ThemedText style={styles.subject} numberOfLines={1}>{t.subject || 'No subject'}</ThemedText>
-                    <ThemedText style={styles.meta}>
-                      {statusLabel(t.status)} · {formatDateForDisplay(t.createdAt.slice(0, 10))}
+                  <GlassCard
+                    elevated
+                    borderRadius={Radius.lg}
+                    borderColor={TILE_BORDER}
+                    contentStyle={[styles.tileContent, { backgroundColor: TILE_BG }]}
+                    sleek
+                    style={styles.tileCard}>
+                    <ThemedText style={styles.tileTitle} numberOfLines={2}>
+                      {t.subject || 'No subject'}
                     </ThemedText>
-                  </Card>
+                    <ThemedText style={styles.tileLine} numberOfLines={2}>
+                      Case Type: {t.type}
+                    </ThemedText>
+                    <ThemedText style={styles.tileLine}>
+                      Date Opened: {formatDateForDisplay(t.createdAt.slice(0, 10))}
+                    </ThemedText>
+                    <ThemedText style={styles.tileLine}>
+                      Status: {statusLabel(t.status)}
+                      {t.closureRequested ? ' · Closure requested' : ''}
+                    </ThemedText>
+                  </GlassCard>
                 </TouchableOpacity>
               ))}
             </ThemedView>
@@ -73,7 +92,7 @@ function CaseworkListInner() {
 
 export default function CaseworkListScreen() {
   return (
-    <AssociationMembershipGate title="Casework">
+    <AssociationMembershipGate title="Casework and Support">
       <CaseworkListInner />
     </AssociationMembershipGate>
   );
@@ -109,19 +128,41 @@ const styles = StyleSheet.create({
     fontSize: FontSize.body,
   },
   list: {
-    gap: Spacing.lg,
+    gap: Spacing.md,
     paddingTop: Spacing.sm,
   },
-  card: {
+  newRequestBtn: {
+    backgroundColor: CYAN_BTN,
+    borderRadius: Radius.lg,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+  },
+  newRequestBtnPressed: {
+    opacity: 0.9,
+  },
+  newRequestBtnText: {
+    color: '#101115',
+    fontWeight: FontWeight.bold,
+    fontSize: FontSize.body,
+  },
+  tileCard: {
     marginBottom: 0,
   },
-  subject: {
-    opacity: 0.9,
-    marginTop: Spacing.xs,
+  tileContent: {
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.xs,
   },
-  meta: {
+  tileTitle: {
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.bold,
+    color: NeoText.primary,
+  },
+  tileLine: {
     fontSize: FontSize.sm,
-    opacity: 0.75,
-    marginTop: Spacing.xs,
+    color: NeoText.secondary,
+    lineHeight: 20,
   },
 });

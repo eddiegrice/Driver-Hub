@@ -13,7 +13,7 @@ export type AdminAreaHeaderProps = {
   showBackLink?: boolean;
   /** Default: ← Admin dashboard (navigates to `/admin`). */
   backLabel?: string;
-  /** Default: `router.push('/admin')`. Use `router.back` when nested admin flows need stack pop. */
+  /** Default: `router.replace('/admin')`. Override for subsystem list or stack pop. */
   onBackPress?: () => void;
 };
 
@@ -28,7 +28,8 @@ export function AdminAreaHeader({
   onBackPress,
 }: AdminAreaHeaderProps) {
   const router = useRouter();
-  const handleBack = onBackPress ?? (() => router.push('/admin' as Href));
+  const goAdminDashboard = () => router.replace('/admin' as Href);
+  const handleBack = onBackPress ?? goAdminDashboard;
 
   return (
     <View style={styles.root}>
@@ -41,7 +42,13 @@ export function AdminAreaHeader({
       ) : null}
       <View style={[styles.dashboardHeader, !showBackLink && styles.dashboardHeaderHub]}>
         <View style={styles.headerLine} />
-        <ThemedText style={styles.dashboardTitle}>Admin Dashboard</ThemedText>
+        <TouchableOpacity
+          onPress={goAdminDashboard}
+          hitSlop={12}
+          accessibilityRole="link"
+          accessibilityLabel="Admin dashboard">
+          <ThemedText style={styles.dashboardTitle}>Admin Dashboard</ThemedText>
+        </TouchableOpacity>
         <MenuSectionEyebrow label={subsystemLabel} wideSideLines />
       </View>
     </View>

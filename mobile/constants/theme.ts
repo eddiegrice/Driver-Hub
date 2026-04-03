@@ -14,7 +14,7 @@ export const NeoBase = {
 // ——— Glass element material (high-end glassmorphism) ———
 export const NeoGlass = {
   frostedOverlay: 'rgba(255, 255, 255, 0.07)',  // Over blur for frosted look
-  cardBorder: 'rgba(255, 255, 255, 0.1)',       // 1px etched border on cards/containers
+  cardBorder: 'rgba(0, 204, 255, 0.18)',        // 1px etched border on cards/containers (cyan-tinted for definition)
   surface: 'rgba(22, 24, 30, 0.85)',           // Fallback when blur unavailable
   surfaceElevated: 'rgba(28, 30, 38, 0.9)',
   navBar: 'rgba(16, 17, 21, 0.75)',

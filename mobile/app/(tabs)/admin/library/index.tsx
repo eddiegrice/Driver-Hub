@@ -1,0 +1,243 @@
+import { useFocusEffect } from '@react-navigation/native';
+import type { Href } from 'expo-router';
+import { useRouter } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
+
+import { AdminSubpageScaffold } from '@/components/admin/AdminSubpageScaffold';
+import { MenuSectionEyebrow } from '@/components/home/MenuIconGrid';
+import { ThemedText } from '@/components/themed-text';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { cmsPostMatchesSearch } from '@/lib/cms-post-search';
+import { fetchCmsPosts } from '@/lib/cms-supabase';
+import { supabase } from '@/lib/supabase';
+import type { CmsPost } from '@/types/cms';
+import { FontSize, FontWeight, NeoGlass, NeoText, Radius, Spacing } from '@/constants/theme';
+import { formatDateForDisplay } from '@/types/member';
+
+const CYAN = '#00CCFF';
+const LIGHT_EDGE = NeoGlass.cardBorder;
+
+export default function AdminLibraryLandingScreen() {
+  const router = useRouter();
+
+  const [libraryPosts, setLibraryPosts] = useState<CmsPost[]>([]);
+  const [listLoading, setListLoading] = useState(true);
+  const [listError, setListError] = useState<Error | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const loadLibrary = useCallback(async () => {
+    setListError(null);
+    const { posts, error } = await fetchCmsPosts(supabase, 'library');
+    setLibraryPosts(posts);
+    setListError(error);
+    setListLoading(false);
+    setRefreshing(false);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      setListLoading(true);
+      void loadLibrary();
+    }, [loadLibrary])
+  );
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    void loadLibrary();
+  }, [loadLibrary]);
+
+  const filteredPosts = useMemo(
+    () => libraryPosts.filter((p) => cmsPostMatchesSearch(p, search)),
+    [libraryPosts, search]
+  );
+
+  return (
+    <AdminSubpageScaffold
+      subsystemTitle="Library System"
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={CYAN} />}
+    >
+      <View style={styles.body}>
+        <View style={styles.createTileOuter}>
+          <Pressable
+            onPress={() => router.push('/admin/library/create' as Href)}
+            style={({ pressed }) => [
+              styles.createTileSurface,
+              pressed && styles.createTileSurfacePressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Create library article"
+          >
+            <ThemedText style={styles.createTileText} numberOfLines={2}>
+              Create Library Article
+            </ThemedText>
+          </Pressable>
+        </View>
+
+        <GlassCard
+          sleek
+          borderRadius={Radius.lg}
+          borderColor={LIGHT_EDGE}
+          contentStyle={styles.panelInner}
+          style={styles.panelCard}
+        >
+          <View style={styles.panelHeaderWrap}>
+            <MenuSectionEyebrow label="Articles" />
+          </View>
+
+          {listLoading ? (
+            <ActivityIndicator color={CYAN} style={styles.listSpinner} />
+          ) : listError ? (
+            <ThemedText style={styles.msgErr}>{listError.message}</ThemedText>
+          ) : libraryPosts.length === 0 ? (
+            <ThemedText style={styles.emptyList}>No library articles yet.</ThemedText>
+          ) : (
+            <>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search articles…"
+                placeholderTextColor={NeoText.muted}
+                value={search}
+                onChangeText={setSearch}
+                autoCorrect={false}
+                autoCapitalize="none"
+              />
+              {filteredPosts.length === 0 ? (
+                <ThemedText style={styles.emptyList}>No articles match your search.</ThemedText>
+              ) : (
+                <View style={styles.listBlock}>
+                  {filteredPosts.map((post, i) => (
+                    <Pressable
+                      key={post.id}
+                      onPress={() => router.push(`/admin/library/${post.id}` as Href)}
+                      style={({ pressed }) => [
+                        styles.row,
+                        i === filteredPosts.length - 1 && styles.rowLast,
+                        pressed && styles.rowPressed,
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Edit library article: ${post.title}`}
+                    >
+                      <ThemedText style={styles.rowTitle} numberOfLines={2}>
+                        {post.title}
+                      </ThemedText>
+                      <ThemedText style={styles.rowMeta}>
+                        {formatDateForDisplay(post.published_at.slice(0, 10))}
+                      </ThemedText>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </>
+          )}
+        </GlassCard>
+      </View>
+    </AdminSubpageScaffold>
+  );
+}
+
+const styles = StyleSheet.create({
+  body: {
+    gap: Spacing.lg,
+    paddingBottom: Spacing.md,
+    alignSelf: 'stretch',
+    width: '100%',
+    maxWidth: '100%',
+  },
+  createTileOuter: {
+    marginHorizontal: Spacing.xl,
+    alignSelf: 'stretch',
+    maxWidth: '100%',
+  },
+  createTileSurface: {
+    alignSelf: 'stretch',
+    borderRadius: Radius.lg,
+    backgroundColor: CYAN,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.12)',
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 56,
+  },
+  createTileSurfacePressed: {
+    backgroundColor: '#00B8E6',
+  },
+  createTileText: {
+    fontSize: FontSize.bodyLarge,
+    fontWeight: FontWeight.semibold,
+    color: '#000000',
+    textAlign: 'center',
+    flexShrink: 1,
+    width: '100%',
+  },
+  panelCard: {
+    marginHorizontal: Spacing.md,
+    width: 'auto',
+    alignSelf: 'stretch',
+  },
+  panelInner: {
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+  },
+  panelHeaderWrap: {
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  searchInput: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: NeoGlass.cardBorder,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    fontSize: FontSize.sm,
+    color: NeoText.primary,
+    marginBottom: Spacing.md,
+  },
+  listSpinner: {
+    marginVertical: Spacing.md,
+  },
+  msgErr: {
+    color: NeoText.error,
+    fontSize: FontSize.sm,
+  },
+  emptyList: {
+    color: NeoText.muted,
+    fontSize: FontSize.sm,
+    paddingVertical: Spacing.sm,
+  },
+  listBlock: {
+    gap: 0,
+  },
+  row: {
+    gap: 4,
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: NeoGlass.stroke,
+  },
+  rowLast: {
+    borderBottomWidth: 0,
+  },
+  rowPressed: {
+    opacity: 0.85,
+  },
+  rowTitle: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
+    color: NeoText.primary,
+  },
+  rowMeta: {
+    fontSize: FontSize.xs,
+    color: NeoText.muted,
+  },
+});

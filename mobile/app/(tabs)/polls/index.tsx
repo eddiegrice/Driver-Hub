@@ -1,25 +1,102 @@
 import { useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
+import { AssociationDashboardBackLink } from '@/components/AssociationDashboardBackLink';
+import { AssociationMembershipGate } from '@/components/AssociationMembershipGate';
 import { TabScreenHeader } from '@/components/TabScreenHeader';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Card } from '@/components/ui/Card';
+import { GlassCard } from '@/components/ui/GlassCard';
 import { usePolls } from '@/context/PollsContext';
-import { AssociationDashboardBackLink } from '@/components/AssociationDashboardBackLink';
-import { AssociationMembershipGate } from '@/components/AssociationMembershipGate';
-import { FontSize, Spacing } from '@/constants/theme';
-import { formatDateForDisplay } from '@/types/member';
+import { scrollContentGutter } from '@/constants/scrollLayout';
+import { FontSize, FontWeight, NeoGlass, NeoText, Radius, Spacing } from '@/constants/theme';
+import type { Poll } from '@/types/polls';
+import { formatDateTimeLocalForDisplay } from '@/types/member';
+const TILE_BORDER = 'rgba(140, 180, 255, 0.7)';
+const TILE_BG = 'rgba(40, 80, 200, 0.18)';
+const CYAN = '#00CCFF';
+
+type Segment = 'polls' | 'surveys';
+
+const PILL_DEFS: { key: Segment; label: string }[] = [
+  { key: 'polls', label: 'Polls' },
+  { key: 'surveys', label: 'Surveys' },
+];
+
+function openPollMetaLine(poll: Poll): string {
+  const now = Date.now();
+  const start = new Date(poll.publishAt).getTime();
+  if (now < start) {
+    return `Opens ${formatDateTimeLocalForDisplay(poll.publishAt)}`;
+  }
+  return `Closes ${formatDateTimeLocalForDisplay(poll.closeAt)}`;
+}
+
+type PollSectionProps = {
+  title: string;
+  polls: Poll[];
+  variant: 'open' | 'closed';
+};
+
+function PollSection({ title, polls, variant }: PollSectionProps) {
+  const router = useRouter();
+
+  return (
+    <GlassCard
+      elevated
+      borderRadius={Radius.lg}
+      contentStyle={styles.sectionContent}
+      sleek
+      style={styles.sectionCard}>
+      <ThemedText style={styles.sectionTitle}>{title}</ThemedText>
+      {polls.length === 0 ? (
+        <ThemedText style={styles.noneText}>• None</ThemedText>
+      ) : (
+        <View style={styles.pollList}>
+          {polls.map((poll) => (
+            <TouchableOpacity
+              key={poll.id}
+              onPress={() => router.push(`/polls/${poll.id}`)}
+              activeOpacity={0.8}>
+              <GlassCard
+                elevated
+                borderRadius={Radius.lg}
+                borderColor={TILE_BORDER}
+                contentStyle={[styles.tileContent, { backgroundColor: TILE_BG }]}
+                sleek
+                style={styles.tileCard}>
+                <ThemedText style={styles.tileTitle} numberOfLines={2}>
+                  {poll.title}
+                </ThemedText>
+                <ThemedText style={styles.tileMeta}>
+                  {variant === 'open'
+                    ? openPollMetaLine(poll)
+                    : `Closed ${formatDateTimeLocalForDisplay(poll.closeAt)}`}
+                </ThemedText>
+              </GlassCard>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+    </GlassCard>
+  );
+}
 
 function PollsListInner() {
-  const router = useRouter();
-  const { openPolls, closedPolls, isLoading } = usePolls();
+  const [segment, setSegment] = useState<Segment>('polls');
+  const { openPolls, closedPolls, openSurveys, closedSurveys, isLoading } = usePolls();
+
+  const openList: Poll[] = segment === 'polls' ? openPolls : openSurveys;
+  const closedList: Poll[] = segment === 'polls' ? closedPolls : closedSurveys;
+  const openTitle = segment === 'polls' ? 'Open Polls' : 'Open Surveys';
+  const closedTitle = segment === 'polls' ? 'Closed Polls' : 'Closed Surveys';
 
   if (isLoading) {
     return (
       <View style={styles.screen}>
         <AssociationDashboardBackLink />
-        <TabScreenHeader title="Polls" />
+        <TabScreenHeader title="Polls and Surveys" />
         <ThemedView style={styles.centered}>
           <ThemedText>Loading…</ThemedText>
         </ThemedView>
@@ -30,57 +107,39 @@ function PollsListInner() {
   return (
     <View style={styles.screen}>
       <AssociationDashboardBackLink />
-      <TabScreenHeader title="Polls" />
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <TabScreenHeader title="Polls and Surveys" />
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={scrollContentGutter}
+        showsVerticalScrollIndicator={false}>
         <ThemedView style={styles.container}>
-          <ThemedText style={styles.helperText}>
-            Take part in club polls and surveys. Results are only shown after a poll closes.
-          </ThemedText>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.pillRow}
+            style={styles.pillScroll}
+            nestedScrollEnabled>
+            {PILL_DEFS.map(({ key, label }) => {
+              const active = segment === key;
+              return (
+                <Pressable
+                  key={key}
+                  onPress={() => setSegment(key)}
+                  style={({ pressed }) => [
+                    styles.pill,
+                    active && styles.pillActive,
+                    pressed && styles.pillPressed,
+                  ]}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: active }}>
+                  <ThemedText style={[styles.pillLabel, active && styles.pillLabelActive]}>{label}</ThemedText>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
 
-        {openPolls.length > 0 && (
-          <>
-            <ThemedText type="subtitle" style={styles.sectionLabel}>Open</ThemedText>
-            <ThemedView style={styles.list}>
-              {openPolls.map((poll) => (
-                <TouchableOpacity
-                  key={poll.id}
-                  onPress={() => router.push(`/polls/${poll.id}`)}
-                  activeOpacity={0.8}>
-                  <Card accent elevated style={styles.card}>
-                    <ThemedText type="defaultSemiBold">{poll.title}</ThemedText>
-                    <ThemedText style={styles.meta}>
-                      Closes {formatDateForDisplay(poll.endsAt.slice(0, 10))}
-                    </ThemedText>
-                  </Card>
-                </TouchableOpacity>
-              ))}
-            </ThemedView>
-          </>
-        )}
-
-        {closedPolls.length > 0 && (
-          <>
-            <ThemedText type="subtitle" style={styles.sectionTitle}>Closed</ThemedText>
-            <ThemedText style={styles.sectionHint}>Tap to view results</ThemedText>
-            <ThemedView style={styles.list}>
-              {closedPolls.map((poll) => (
-                <TouchableOpacity
-                  key={poll.id}
-                  onPress={() => router.push(`/polls/${poll.id}`)}
-                  activeOpacity={0.8}>
-                  <Card elevated style={styles.cardClosed}>
-                    <ThemedText type="defaultSemiBold">{poll.title}</ThemedText>
-                    <ThemedText style={styles.meta}>Closed {formatDateForDisplay(poll.endsAt.slice(0, 10))}</ThemedText>
-                  </Card>
-                </TouchableOpacity>
-              ))}
-            </ThemedView>
-          </>
-        )}
-
-        {openPolls.length === 0 && closedPolls.length === 0 && (
-          <ThemedText style={styles.empty}>No polls at the moment.</ThemedText>
-        )}
+          <PollSection title={openTitle} polls={openList} variant="open" />
+          <PollSection title={closedTitle} polls={closedList} variant="closed" />
         </ThemedView>
       </ScrollView>
     </View>
@@ -89,7 +148,7 @@ function PollsListInner() {
 
 export default function PollsListScreen() {
   return (
-    <AssociationMembershipGate title="Polls">
+    <AssociationMembershipGate title="Polls and Surveys">
       <PollsListInner />
     </AssociationMembershipGate>
   );
@@ -102,53 +161,86 @@ const styles = StyleSheet.create({
   scroll: {
     flex: 1,
   },
-  scrollContent: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.xxl,
-  },
   centered: {
     flex: 1,
     paddingVertical: Spacing.xxl,
     alignItems: 'center',
   },
   container: {
-    gap: Spacing.xl,
+    gap: Spacing.lg,
   },
-  helperText: {
-    opacity: 0.85,
-    fontSize: FontSize.body,
+  pillScroll: {
+    flexGrow: 0,
+    marginHorizontal: -Spacing.xs,
   },
-  sectionLabel: {
-    marginTop: Spacing.sm,
+  pillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.xs,
+  },
+  pill: {
+    paddingVertical: 10,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: NeoGlass.cardBorder,
+    backgroundColor: 'rgba(22, 24, 32, 0.75)',
+  },
+  pillActive: {
+    borderColor: CYAN,
+    backgroundColor: 'rgba(0, 204, 255, 0.14)',
+  },
+  pillPressed: {
+    opacity: 0.88,
+  },
+  pillLabel: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
+    color: NeoText.muted,
+  },
+  pillLabelActive: {
+    color: CYAN,
+  },
+  sectionCard: {
+    marginBottom: 0,
+  },
+  sectionContent: {
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.md,
   },
   sectionTitle: {
-    marginTop: Spacing.xxl,
-  },
-  sectionHint: {
-    fontSize: FontSize.sm,
-    opacity: 0.75,
-    marginTop: Spacing.xs,
-  },
-  empty: {
-    opacity: 0.8,
-    paddingVertical: Spacing.xxl,
     fontSize: FontSize.body,
+    fontWeight: FontWeight.bold,
+    color: NeoText.primary,
+    letterSpacing: 0.5,
+    textAlign: 'center',
   },
-  list: {
-    gap: Spacing.lg,
-    paddingTop: Spacing.md,
-  },
-  card: {
-    marginBottom: 0,
-  },
-  cardClosed: {
-    marginBottom: 0,
-    opacity: 0.95,
-  },
-  meta: {
+  noneText: {
     fontSize: FontSize.sm,
-    opacity: 0.75,
-    marginTop: Spacing.xs,
+    color: NeoText.muted,
+  },
+  pollList: {
+    gap: Spacing.md,
+  },
+  tileCard: {
+    marginBottom: 0,
+  },
+  tileContent: {
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.xs,
+  },
+  tileTitle: {
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.semibold,
+    color: NeoText.primary,
+  },
+  tileMeta: {
+    fontSize: FontSize.sm,
+    color: NeoText.secondary,
+    lineHeight: 20,
   },
 });

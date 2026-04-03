@@ -20,3 +20,9 @@ enabled = true
 # Cron / server invokes often use service_role only; false avoids JWT edge cases on invoke.
 verify_jwt = false
 entrypoint = "./functions/sportsdb-events/index.ts"
+
+[functions.cms-upload-image]
+enabled = true
+# Gateway JWT check breaks some RN/FormData invokes ("Invalid JWT"); we validate the user inside the function.
+verify_jwt = false
+entrypoint = "./functions/cms-upload-image/index.ts"

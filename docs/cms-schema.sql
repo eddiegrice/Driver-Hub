@@ -26,22 +26,43 @@ create index if not exists idx_cms_posts_front_page_news
 
 alter table public.cms_posts enable row level security;
 
--- Read: active members see all posts; any signed-in user sees rows flagged as front-page announcements.
+-- Read membership check without querying members under caller RLS (avoids breaking cms_posts when members RLS misbehaves).
+create or replace function public.is_current_membership_active()
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select coalesce(
+    (
+      select lower(trim(m.membership_status::text)) = 'active'
+      from public.members m
+      where m.id = auth.uid()
+    ),
+    false
+  );
+$$;
+
+revoke all on function public.is_current_membership_active() from public;
+grant execute on function public.is_current_membership_active() to authenticated;
+
+-- Read: two permissive policies so front-page rows never depend on evaluating a failing members subquery.
 drop policy if exists "Members can read cms_posts" on public.cms_posts;
-create policy "Members can read cms_posts"
+drop policy if exists "CMS read: front-page announcements" on public.cms_posts;
+drop policy if exists "CMS read: active members all posts" on public.cms_posts;
+
+create policy "CMS read: front-page announcements"
   on public.cms_posts for select
   using (
     auth.uid() is not null
-    and (
-      is_front_page_announcement = true
-      or exists (
-        select 1
-        from public.members m
-        where m.id = auth.uid()
-          and m.membership_status = 'active'
-      )
-    )
+    and type = 'news'
+    and is_front_page_announcement = true
   );
+
+create policy "CMS read: active members all posts"
+  on public.cms_posts for select
+  using (auth.uid() is not null and public.is_current_membership_active());
 
 -- App admins (members.is_admin): insert/update rows from the in-app Admin Panel.
 drop policy if exists "Admins can insert cms_posts" on public.cms_posts;

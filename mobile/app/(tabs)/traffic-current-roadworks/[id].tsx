@@ -8,12 +8,12 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { useTraffic } from '@/context/TrafficContext';
 import { fetchTrafficSituationById } from '@/lib/traffic-supabase';
 import { supabase } from '@/lib/supabase';
-import { FontSize, NeoText, Radius, Spacing } from '@/constants/theme';
+import { FontSize, NeoGlass, NeoText, Radius, Spacing } from '@/constants/theme';
 import { situationTypeLabel } from '@/types/traffic';
 import type { TrafficSituation } from '@/types/traffic';
 import { formatDateForDisplay } from '@/types/member';
 
-const LIGHT_EDGE = 'rgba(255, 255, 255, 0.1)';
+const LIGHT_EDGE = NeoGlass.cardBorder;
 const TRAFFIC_SCOTLAND_URL = 'https://www.traffic.gov.scot/';
 
 function formatTime(iso: string | null): string {
